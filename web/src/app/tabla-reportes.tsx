@@ -44,9 +44,16 @@ const COLUMNAS: Columna[] = [
     id: "folio",
     titulo: "N° Folio",
     celda: (r) => (
-      <Link href={`/reportes/${encodeURIComponent(r.folio)}`} className="link-fuerte">
-        {r.folio}
-      </Link>
+      <>
+        <Link href={`/reportes/${encodeURIComponent(r.folio)}`} className="link-fuerte">
+          {r.folio}
+        </Link>
+        {r.pausado_at && (
+          <div className="etiqueta-pausa" title={`Estaba en ${r.estado_previo ?? "—"}`}>
+            ⏸ En pausa
+          </div>
+        )}
+      </>
     ),
   },
   {

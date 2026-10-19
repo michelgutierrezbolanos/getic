@@ -39,6 +39,8 @@ export type Reporte = {
   fecha_limite: string | null;
   comentarios: Comentario[] | null;
   historial_tienda: IncidenciaTienda[] | null;
+  pausado_at: string | null;
+  estado_previo: string | null;
   updated_at: string;
 };
 
@@ -95,6 +97,8 @@ export const CAMPOS_EDITABLES = [
   "fecha_limite",
   "comentarios",
   "historial_tienda",
+  "pausado_at",
+  "estado_previo",
 ] as const;
 
 export const CAMPOS_FECHA = [
@@ -107,6 +111,7 @@ export const CAMPOS_FECHA = [
   "fecha_resuelto",
   "tiempo_capturado_at",
   "fecha_limite",
+  "pausado_at",
 ] as const;
 
 /**

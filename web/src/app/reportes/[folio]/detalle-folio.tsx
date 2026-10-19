@@ -151,6 +151,14 @@ export default function DetalleFolio({ inicial, miNombre }: { inicial: Reporte; 
         </Link>
       </div>
 
+      {r.pausado_at && (
+        <div className="aviso-pausa">
+          <b>⏸ Folio en pausa</b> desde {formatFechaLarga(r.pausado_at)}. Getic lo regresó a{" "}
+          <b>{estadoGetic(r.estado)}</b>; estaba en <b>{r.estado_previo ?? "—"}</b> (p. ej. falta una pieza). Para
+          retomarlo vuelve a tomarlo, confirmarlo y marcar llegada a sitio.
+        </div>
+      )}
+
       <h3 className="seccion-titulo">Informacion de apertura</h3>
       <div className="caja">
         <table className="tabla-apertura">
