@@ -1,7 +1,8 @@
 import { headers } from "next/headers";
 import GeticShell from "@/components/GeticShell";
 import { sesionActual } from "@/lib/sesion";
-import { ENDPOINTS, type Endpoint } from "@/lib/api-docs";
+import { ENDPOINTS, guiaParaBot, type Endpoint } from "@/lib/api-docs";
+import Conexion from "./conexion";
 
 export const metadata = { title: "API del bot · Getic" };
 
@@ -16,9 +17,9 @@ function Json({ valor }: { valor: unknown }) {
   return <pre className="codigo">{JSON.stringify(valor, null, 2)}</pre>;
 }
 
-function curl(base: string, e: Endpoint) {
+function curl(base: string, clave: string, e: Endpoint) {
   const ruta = e.ruta.replace("{folio}", "INC14911536").replace("{id}", "12");
-  const partes = [`curl -X ${e.metodo} "${base}${ruta}"`, `  -H "Authorization: Bearer $BOT_API_KEY"`];
+  const partes = [`curl -X ${e.metodo} "${base}${ruta}"`, `  -H "Authorization: Bearer ${clave}"`];
   if (e.body !== undefined) {
     partes.push(`  -H "Content-Type: application/json"`, `  -d '${JSON.stringify(e.body)}'`);
   }
@@ -32,17 +33,20 @@ export default async function ApiDocs() {
   const base = `${protocolo}://${host}`;
   const grupos = [...new Set(ENDPOINTS.map((e) => e.grupo))];
   const { nombre, puesto } = await sesionActual();
+  // La clave se lee de la variable del servidor (Vercel); no está en el código.
+  const clave = process.env.BOT_API_KEY?.trim() ?? "";
 
   return (
     <GeticShell nombre={nombre} puesto={puesto}>
       <main className="jqm-content fade-in">
         <div className="mx-auto max-w-[960px]">
           <h1 className="text-2xl font-bold">API del bot</h1>
-          <p className="mt-2">
-            Base: <code className="codigo-linea">{base}</code>. Todas las rutas necesitan el header{" "}
-            <code className="codigo-linea">Authorization: Bearer &lt;BOT_API_KEY&gt;</code> y responden JSON. Los
-            errores vienen como <code className="codigo-linea">{`{ "error": "..." }`}</code> con código 4xx/5xx.
+          <p className="mt-2 text-sm opacity-80">
+            Todo lo necesario para que un bot lea y escriba en este portal. Solo la ven usuarios con sesión; comparte la
+            clave únicamente con bots de confianza.
           </p>
+
+          <Conexion base={base} clave={clave} guia={guiaParaBot(base, clave)} />
 
           <h2 className="mt-6 text-lg font-bold">Flujo del bot</h2>
           <ol className="ml-5 mt-2 list-decimal space-y-1">
@@ -100,7 +104,7 @@ export default async function ApiDocs() {
                   )}
                   <details className="mt-3">
                     <summary className="cursor-pointer text-sm font-bold">Ejemplo con curl</summary>
-                    <pre className="codigo">{curl(base, e)}</pre>
+                    <pre className="codigo">{curl(base, clave, e)}</pre>
                   </details>
                 </article>
               ))}

@@ -328,3 +328,35 @@ export const ENDPOINTS: Endpoint[] = [
     respuesta: { ok: true },
   },
 ];
+
+/** Texto completo (Markdown) para pegarle a otro bot o IA: conexión, reglas y endpoints. */
+export function guiaParaBot(base: string, clave: string) {
+  const api = `${base}/api/bot`;
+  const lineas = [
+    "# API del portal Getic (clon) — instrucciones para el bot",
+    "",
+    "## Conexión",
+    `- URL base: ${api}`,
+    `- Header obligatorio en TODAS las peticiones: Authorization: Bearer ${clave}`,
+    "- Si la petición lleva body (POST/PATCH): Content-Type: application/json",
+    "- Todas las respuestas son JSON. Errores: { \"error\": \"mensaje\" } con código HTTP 400 (datos inválidos), 401 (clave incorrecta), 404 (no existe) o 500 (reintentar).",
+    `- Prueba: GET ${api} → { "ok": true, "endpoints": [...] }`,
+    "",
+    "## Reglas",
+    "- Fechas: \"dd/mm/aaaa hh:mm AM/PM\" (hora de Vallarta, como las muestra Getic) o ISO 8601 con zona (2026-10-18T11:27:00-06:00).",
+    "- El folio en la URL va codificado (encodeURIComponent).",
+    "- POST /reportes es upsert por \"folio\": reenviar el mismo folio lo actualiza.",
+    "- Acciones pedidas desde la app: GET /acciones → PATCH /acciones/{id} {estado:\"procesando\"} → ejecutar en Getic → PATCH {estado:\"hecho\"} o {estado:\"error\", error:\"motivo\"}. Nunca dejarlas en \"procesando\".",
+    "- Después de ejecutar una acción en Getic, avisar al portal: POST /reportes/{folio}/tomar | confirmar | llegada | cerrar.",
+    "- Consultar cada 60–90 segundos.",
+    "",
+    "## Endpoints",
+  ];
+  for (const e of ENDPOINTS) {
+    lineas.push("", `### ${e.metodo} ${api}${e.ruta.replace("/api/bot", "")}  — ${e.titulo}`, e.descripcion);
+    if (e.query) lineas.push(`Parámetros: ${e.query}`);
+    if (e.body !== undefined) lineas.push("Body:", "```json", JSON.stringify(e.body, null, 2), "```");
+    if (e.respuesta !== undefined) lineas.push("Respuesta:", "```json", JSON.stringify(e.respuesta, null, 2), "```");
+  }
+  return lineas.join("\n");
+}
