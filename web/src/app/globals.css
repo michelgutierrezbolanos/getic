@@ -131,3 +131,99 @@ body {
     transform: translateY(0);
   }
 }
+
+/* ---- Tabla de reportes (estilo panel Getic) ---- */
+.tabla-contenedor {
+  overflow-x: auto;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0 1em 1em;
+}
+.tabla-getic {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 15px;
+  text-shadow: none;
+}
+.tabla-getic th {
+  text-align: left;
+  font-weight: 700;
+  white-space: nowrap;
+  padding: 1em 0.75em 0.6em;
+  background: #fff;
+  border-bottom: 1px solid var(--border);
+}
+.tabla-getic td {
+  vertical-align: top;
+  padding: 0.6em 0.75em;
+  font-weight: 500;
+  color: #111;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.6);
+}
+.dos-lineas > div:first-child {
+  padding-bottom: 0.45em;
+  margin-bottom: 0.45em;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+.link-fuerte {
+  font-weight: 700;
+  color: #000;
+  text-decoration: underline;
+  white-space: nowrap;
+}
+.tiempo {
+  font-weight: 700;
+  font-size: 17px;
+  white-space: nowrap;
+}
+.btn-negro {
+  display: inline-block;
+  padding: 0.45em 0.9em;
+  background: #222;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  border-radius: 4px;
+  text-shadow: none;
+  cursor: pointer;
+}
+.btn-negro:hover {
+  background: #444;
+}
+.menu-columnas {
+  position: absolute;
+  right: 0;
+  top: 110%;
+  z-index: 20;
+  min-width: 220px;
+  padding: 0.5em 0.8em;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
+  font-size: 14px;
+}
+
+/* ---- Detalle del folio ---- */
+.tabla-detalle {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+  border: 1px solid var(--border);
+  font-size: 15px;
+  text-shadow: none;
+}
+.tabla-detalle th {
+  width: 35%;
+  text-align: left;
+  font-weight: 700;
+  padding: 0.35em 0.75em;
+  vertical-align: top;
+}
+.tabla-detalle td {
+  padding: 0.35em 0.75em;
+}
+.tabla-detalle tr:nth-child(odd) {
+  background: #f2f2f2;
+}

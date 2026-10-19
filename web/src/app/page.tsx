@@ -1,12 +1,14 @@
 import Header from "@/components/Header";
 import { createClient } from "@/lib/supabase/server";
+import type { Reporte } from "@/lib/reportes";
 import LogoutButton from "./logout-button";
+import TablaReportes from "./tabla-reportes";
+
+export const dynamic = "force-dynamic";
 
 export default async function Home() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data, error } = await supabase.from("reportes").select("*");
 
   return (
     <>
@@ -14,12 +16,13 @@ export default async function Home() {
         <LogoutButton />
       </Header>
       <main className="jqm-content fade-in">
-        <p className="text-sm">
-          Sesión iniciada como <b>{user?.email}</b>
-        </p>
-        <p className="mt-4 text-sm opacity-70">
-          Aquí irá la tabla de reportes (siguiente etapa).
-        </p>
+        {error ? (
+          <p className="font-bold" style={{ color: "var(--error)" }}>
+            No se pudieron cargar los reportes: {error.message}
+          </p>
+        ) : (
+          <TablaReportes iniciales={(data ?? []) as Reporte[]} />
+        )}
       </main>
     </>
   );
