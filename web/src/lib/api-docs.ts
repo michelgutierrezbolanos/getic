@@ -266,7 +266,7 @@ export const ENDPOINTS: Endpoint[] = [
     metodo: "GET",
     ruta: "/api/bot/horario",
     titulo: "Ver horario",
-    descripcion: "Horario guardado de un usuario.",
+    descripcion: "Horario guardado de un usuario. cambio_at indica la última vez que Getic cambió ese día.",
     query: "email=..., desde=2026-10-19, hasta=2026-10-25 (opcionales)",
   },
   {
@@ -274,7 +274,8 @@ export const ENDPOINTS: Endpoint[] = [
     metodo: "POST",
     ruta: "/api/bot/horario",
     titulo: "Cargar horario",
-    descripcion: "Upsert por día. Los días de descanso van con descanso: true.",
+    descripcion:
+      "Upsert por día; mándalo aunque no cambie (cada 10 min). Si entrada, comida, salida o descanso cambian, el portal guarda cambio_at y la app móvil marca el día como \"Cambió\". Los días de descanso van con descanso: true.",
     body: {
       email: "michel.gutierrez@getic.com.mx",
       dias: [
