@@ -75,3 +75,17 @@ Header `Authorization: Bearer <BOT_API_KEY>`. El body puede ser un reporte o una
 - El color de la fila sale de `estado`: Confirmado → naranja, En sitio → azul, Resuelto/Cerrado → verde, cualquier otro → amarillo.
 
 Variables extra en Vercel (solo servidor): `SUPABASE_SECRET_KEY` y `BOT_API_KEY`.
+
+## API del bot: acciones pedidas desde la app móvil
+
+1. `GET /api/bot/acciones?estado=pendiente` → lista de acciones con `accion`, `folio`, `payload`, `reporte`, `perfil` (nombre y email del ingeniero) y `solicitud`.
+   - `tomar`, `confirmar`, `llegada`: ejecutar el botón correspondiente en Getic.
+   - `cierre`: cerrar en Getic y enviar WhatsApp con `payload.whatsapp` (numero_incidente, cr, tienda, reporte_folio, solucion, vobo, atiende). Las fotos están en Storage `evidencias/` (`payload.evidencias`).
+   - `checada`: marcar en Getic `payload.tipo` (`inicio`, `comida_inicio`, `comida_fin`, `salida`).
+   - `solicitud`: gasolina / velocidad / tag con los datos en `payload`.
+2. `PATCH /api/bot/acciones/<id>` con `{"estado":"procesando"}` al empezar y `{"estado":"hecho"}` o `{"estado":"error","error":"..."}` al terminar.
+3. Después de ejecutar, vuelve a mandar el reporte actualizado a `POST /api/bot/reportes` (nuevo `estado`, fechas, tiempo).
+
+Datos del ingeniero que carga el bot (se identifica por `email`):
+- `POST /api/bot/horario` `{"email":"...","dias":[{"fecha":"2026-10-19","entrada":"09:00","comida":"13:00","salida":"18:00"},{"fecha":"2026-10-25","descanso":true}]}`
+- `POST /api/bot/vehiculo` `{"email":"...","placa":"FKS316D","numero_economico":"237"}`

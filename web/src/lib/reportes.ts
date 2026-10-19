@@ -180,7 +180,7 @@ export function tiempoEnVivo(
 export function colorFila(estado: string | null): string {
   const e = (estado ?? "").toLowerCase();
   if (e.includes("confirm")) return "#eda05a";
-  if (e.includes("sitio") || e.includes("llegada")) return "#86a8d4";
+  if (e.includes("sitio") || e.includes("llegada") || e.includes("working") || e.includes("trabaj")) return "#86a8d4";
   if (e.includes("resuel") || e.includes("cerr")) return "#a8dca0";
   return "#ffff55";
 }
