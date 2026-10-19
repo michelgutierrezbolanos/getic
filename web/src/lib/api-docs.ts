@@ -233,6 +233,35 @@ export const ENDPOINTS: Endpoint[] = [
     respuesta: { ok: true },
   },
   {
+    grupo: "Inicio",
+    metodo: "POST",
+    ruta: "/api/bot/inicio",
+    titulo: "Guardar resumen del inicio",
+    descripcion: "Lo que muestra el inicio de Getic para el clon del portal (solo visual).",
+    body: {
+      email: "michel.gutierrez@getic.com.mx",
+      datos: {
+        dias_sin_siniestros: 68,
+        sla_mes: "100.00%",
+        puesto: "ING IFS SINALOA - VALLARTA",
+        folios_al_momento: [
+          { nombre: "Región Sinaloa", nivel: "region", INC: 10, MTT: 1, REQ: 0, APE: 0, PE: 0, RT: 6, RT_CCTV: 0 },
+          { nombre: "OPV-Prov Vallarta", nivel: "plaza", INC: 10, MTT: 1, REQ: 0, APE: 0, PE: 0, RT: 6, RT_CCTV: 0 },
+        ],
+        anuncios: ["Aviso de robo, Asalto o extravío", "Aviso de unidad vehicular"],
+      },
+    },
+    respuesta: { ok: true },
+  },
+  {
+    grupo: "Inicio",
+    metodo: "GET",
+    ruta: "/api/bot/inicio",
+    titulo: "Ver resumen del inicio",
+    descripcion: "Último resumen guardado de un usuario.",
+    query: "email=...",
+  },
+  {
     grupo: "Horario",
     metodo: "GET",
     ruta: "/api/bot/horario",

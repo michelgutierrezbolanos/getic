@@ -97,10 +97,10 @@ const COLUMNAS: Columna[] = [
 
 const CLAVE_COLUMNAS = "getic_columnas_ocultas";
 
-export default function TablaReportes({ iniciales }: { iniciales: Reporte[] }) {
+export default function TablaReportes({ iniciales, busquedaInicial = "" }: { iniciales: Reporte[]; busquedaInicial?: string }) {
   const router = useRouter();
   const [reportes, setReportes] = useState(iniciales);
-  const [busqueda, setBusqueda] = useState("");
+  const [busqueda, setBusqueda] = useState(busquedaInicial);
   const [ocultas, setOcultas] = useState<string[]>([]);
   const [menuColumnas, setMenuColumnas] = useState(false);
   const [ahora, setAhora] = useState(() => Date.now());
@@ -159,7 +159,7 @@ export default function TablaReportes({ iniciales }: { iniciales: Reporte[] }) {
   }, [activos]);
 
   const visibles = useMemo(() => {
-    const q = busqueda.trim().toLowerCase();
+    const q = busqueda.trim().toLowerCase().replace(/^cr:\s*/, "");
     const filtrados = activos.filter((r) =>
       !q
         ? true

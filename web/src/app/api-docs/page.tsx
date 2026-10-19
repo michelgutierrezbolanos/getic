@@ -1,6 +1,6 @@
 import { headers } from "next/headers";
-import Header from "@/components/Header";
-import MenuUsuario from "@/components/MenuUsuario";
+import GeticShell from "@/components/GeticShell";
+import { sesionActual } from "@/lib/sesion";
 import { ENDPOINTS, type Endpoint } from "@/lib/api-docs";
 
 export const metadata = { title: "API del bot · Getic" };
@@ -31,12 +31,10 @@ export default async function ApiDocs() {
   const protocolo = h.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
   const base = `${protocolo}://${host}`;
   const grupos = [...new Set(ENDPOINTS.map((e) => e.grupo))];
+  const { nombre, puesto } = await sesionActual();
 
   return (
-    <>
-      <Header>
-        <MenuUsuario actual="/api-docs" />
-      </Header>
+    <GeticShell nombre={nombre} puesto={puesto}>
       <main className="jqm-content fade-in">
         <div className="mx-auto max-w-[960px]">
           <h1 className="text-2xl font-bold">API del bot</h1>
@@ -110,6 +108,6 @@ export default async function ApiDocs() {
           ))}
         </div>
       </main>
-    </>
+    </GeticShell>
   );
 }

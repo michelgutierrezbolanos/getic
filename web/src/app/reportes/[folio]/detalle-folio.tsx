@@ -124,7 +124,7 @@ export default function DetalleFolio({ inicial, miNombre }: { inicial: Reporte; 
         <button className="btn-icono" title="Recargar" aria-label="Recargar" onClick={() => router.refresh()}>
           ⟳
         </button>
-        <Link href="/" className="btn-icono" title="Inicio" aria-label="Inicio">
+        <Link href="/reportes" className="btn-icono" title="Lista de folios" aria-label="Lista de folios">
           ⌂
         </Link>
       </div>
