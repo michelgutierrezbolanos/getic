@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import Header from "@/components/Header";
+import MenuUsuario from "@/components/MenuUsuario";
 import { createClient } from "@/lib/supabase/server";
 import { formatFechaLarga, type Reporte } from "@/lib/reportes";
 import TiempoVivo from "./tiempo-vivo";
@@ -48,7 +49,9 @@ export default async function DetalleReporte({ params }: { params: Promise<{ fol
 
   return (
     <>
-      <Header />
+      <Header>
+        <MenuUsuario />
+      </Header>
       <main className="jqm-content fade-in">
         <Link href="/" className="jqm-btn-small mb-3 inline-block">
           ← Reportes

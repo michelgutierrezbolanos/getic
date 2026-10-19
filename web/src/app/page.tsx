@@ -1,7 +1,7 @@
 import Header from "@/components/Header";
 import { createClient } from "@/lib/supabase/server";
 import type { Reporte } from "@/lib/reportes";
-import LogoutButton from "./logout-button";
+import MenuUsuario from "@/components/MenuUsuario";
 import TablaReportes from "./tabla-reportes";
 
 export const dynamic = "force-dynamic";
@@ -13,7 +13,7 @@ export default async function Home() {
   return (
     <>
       <Header>
-        <LogoutButton />
+        <MenuUsuario actual="/" />
       </Header>
       <main className="jqm-content fade-in">
         {error ? (

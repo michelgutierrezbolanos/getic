@@ -89,3 +89,11 @@ Variables extra en Vercel (solo servidor): `SUPABASE_SECRET_KEY` y `BOT_API_KEY`
 Datos del ingeniero que carga el bot (se identifica por `email`):
 - `POST /api/bot/horario` `{"email":"...","dias":[{"fecha":"2026-10-19","entrada":"09:00","comida":"13:00","salida":"18:00"},{"fecha":"2026-10-25","descanso":true}]}`
 - `POST /api/bot/vehiculo` `{"email":"...","placa":"FKS316D","numero_economico":"237"}`
+
+## Documentación completa de la API
+
+Entra al portal → **API** (`/api-docs`): todos los endpoints con body, respuesta y ejemplo curl. `GET /api/bot` devuelve la misma lista en JSON.
+
+## Configuración por usuario
+
+Portal → **Configuración**: "Enviar datos a portal alternativo" Sí/No. Los admin (`perfiles.rol = 'admin'`) ven y cambian a todos los usuarios. Requiere `supabase/migrations/0004_configuracion.sql`.

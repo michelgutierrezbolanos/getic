@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import Header from "@/components/Header";
+import MenuUsuario from "@/components/MenuUsuario";
 import { createClient } from "@/lib/supabase/client";
 import { normalizarReporte, parseTiempo } from "@/lib/reportes";
 
@@ -78,7 +79,9 @@ export default function NuevoReporte() {
 
   return (
     <>
-      <Header />
+      <Header>
+        <MenuUsuario />
+      </Header>
       <main className="jqm-content fade-in">
         <div className="mx-auto max-w-[800px]">
           <Link href="/" className="jqm-btn-small mb-3 inline-block">
