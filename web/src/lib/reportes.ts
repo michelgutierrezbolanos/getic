@@ -31,7 +31,29 @@ export type Reporte = {
   solucion: string | null;
   vobo: string | null;
   atiende: string | null;
+  folio_falso: string | null;
+  inc_id: string | null;
+  latitud: number | null;
+  longitud: number | null;
+  sla_minutos: number | null;
+  fecha_limite: string | null;
+  comentarios: Comentario[] | null;
+  historial_tienda: IncidenciaTienda[] | null;
   updated_at: string;
+};
+
+export type Comentario = { usuario: string | null; mensaje: string; fecha: string; tipo: "otro" | "mio" | "historia" };
+
+export type IncidenciaTienda = {
+  folio: string;
+  inc_id: string | null;
+  tipo: string;
+  concepto: string;
+  nombre: string;
+  fecha: string;
+  descripcion: string;
+  diagnostico: string;
+  solucion: string;
 };
 
 /** Columnas que el bot o la alta manual pueden escribir. */
@@ -66,6 +88,13 @@ export const CAMPOS_EDITABLES = [
   "atiende",
   "folio_falso",
   "evidencias",
+  "inc_id",
+  "latitud",
+  "longitud",
+  "sla_minutos",
+  "fecha_limite",
+  "comentarios",
+  "historial_tienda",
 ] as const;
 
 export const CAMPOS_FECHA = [
@@ -77,6 +106,7 @@ export const CAMPOS_FECHA = [
   "fecha_llegada",
   "fecha_resuelto",
   "tiempo_capturado_at",
+  "fecha_limite",
 ] as const;
 
 /**
@@ -126,18 +156,11 @@ export function formatFecha(iso: string | null): [string, string] | null {
 }
 
 export function formatFechaLarga(iso: string | null): string {
-  if (!iso) return "";
-  const fecha = new Date(iso);
-  if (Number.isNaN(fecha.getTime())) return "";
-  return new Intl.DateTimeFormat("es-MX", {
-    timeZone: ZONA,
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: true,
-  }).format(fecha);
+  const f = formatFecha(iso);
+  if (!f) return "";
+  // "18/10/26" → "18/10/2026", igual que la ficha de Getic: "18/10/2026 11:27 AM"
+  const [d, m, a] = f[0].split("/");
+  return `${d}/${m}/20${a} ${f[1]}`;
 }
 
 /** "1dia(s) 21:20:24" → segundos. Devuelve null si no se reconoce. */
@@ -164,9 +187,14 @@ export function formatTiempo(segundos: number): string {
  * (o suma, si ya está vencido) los segundos transcurridos desde la captura.
  */
 export function tiempoEnVivo(
-  r: Pick<Reporte, "tiempo_restante" | "tiempo_vencido" | "tiempo_capturado_at">,
+  r: Pick<Reporte, "tiempo_restante" | "tiempo_vencido" | "tiempo_capturado_at"> & { fecha_limite?: string | null },
   ahora: number,
 ): { texto: string; vencido: boolean } | null {
+  // Igual que Getic: límite = Hora Alta + SLA. Si el bot lo mandó, es lo más exacto.
+  if (r.fecha_limite) {
+    const diff = (new Date(r.fecha_limite).getTime() - ahora) / 1000;
+    if (!Number.isNaN(diff)) return { texto: formatTiempo(Math.abs(diff)), vencido: diff < 0 };
+  }
   const base = parseTiempo(r.tiempo_restante);
   if (base == null) return r.tiempo_restante ? { texto: r.tiempo_restante, vencido: r.tiempo_vencido } : null;
   const capturado = r.tiempo_capturado_at ? new Date(r.tiempo_capturado_at).getTime() : ahora;
@@ -178,13 +206,36 @@ export function tiempoEnVivo(
     : { texto: formatTiempo(-restante), vencido: true };
 }
 
+/** Estados de Getic con el color exacto de su tabla. */
+export const ESTADOS_GETIC = [
+  { estado: "Sin Asignar", color: "rgba(255,0,0,0.5)" },
+  { estado: "Asignado", color: "rgba(255,255,0,0.8)" },
+  { estado: "Confirmado", color: "rgba(239,127,26,0.8)" },
+  { estado: "LlegadaSitio", color: "rgba(27,117,187,0.6)" },
+] as const;
+
+/** Estado normalizado a los 4 de la tabla de Getic (o "Resuelto"). */
+export function estadoGetic(estado: string | null): string {
+  const e = (estado ?? "").toLowerCase().replace(/\s/g, "");
+  if (e.includes("resuel") || e.includes("cerr") || e.includes("cancel")) return "Resuelto";
+  if (e.includes("llegada") || e.includes("sitio") || e.includes("working") || e.includes("trabaj")) return "LlegadaSitio";
+  if (e.includes("confirm")) return "Confirmado";
+  if (e.includes("asignado") && !e.includes("sin")) return "Asignado";
+  return "Sin Asignar"; // Abierto, Sin Asignar, vacío
+}
+
 /** Color de la fila según el estado, como en la tabla de Getic. */
 export function colorFila(estado: string | null): string {
-  const e = (estado ?? "").toLowerCase();
-  if (e.includes("confirm")) return "#eda05a";
-  if (e.includes("sitio") || e.includes("llegada") || e.includes("working") || e.includes("trabaj")) return "#86a8d4";
-  if (e.includes("resuel") || e.includes("cerr")) return "#a8dca0";
-  return "#ffff55";
+  const e = estadoGetic(estado);
+  if (e === "Resuelto") return "rgba(82,255,0,0.57)";
+  return ESTADOS_GETIC.find((x) => x.estado === e)?.color ?? "#fff";
+}
+
+/** URL de Google Maps de la tienda (igual que el enlace de Getic). */
+export function urlMapa(r: Pick<Reporte, "latitud" | "longitud" | "cr" | "tienda">) {
+  if (r.latitud != null && r.longitud != null) return `https://maps.google.com/maps?f=q&q=${r.latitud},${r.longitud}`;
+  const q = [r.cr, r.tienda, "OXXO"].filter(Boolean).join(" ");
+  return `https://maps.google.com/maps?f=q&q=${encodeURIComponent(q)}`;
 }
 
 export const ESTADOS_CERRADOS = ["resuelto", "cerrado", "cancelado"];

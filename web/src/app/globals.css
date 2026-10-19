@@ -173,6 +173,7 @@ body {
   white-space: nowrap;
 }
 .tiempo {
+  margin: 0;
   font-weight: 700;
   font-size: 17px;
   white-space: nowrap;
@@ -203,29 +204,6 @@ body {
   border-radius: 5px;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
   font-size: 14px;
-}
-
-/* ---- Detalle del folio ---- */
-.tabla-detalle {
-  width: 100%;
-  border-collapse: collapse;
-  background: #fff;
-  border: 1px solid var(--border);
-  font-size: 15px;
-  text-shadow: none;
-}
-.tabla-detalle th {
-  width: 35%;
-  text-align: left;
-  font-weight: 700;
-  padding: 0.35em 0.75em;
-  vertical-align: top;
-}
-.tabla-detalle td {
-  padding: 0.35em 0.75em;
-}
-.tabla-detalle tr:nth-child(odd) {
-  background: #f2f2f2;
 }
 
 /* ---- Documentación de la API ---- */
@@ -259,4 +237,202 @@ body {
   padding: 0.05em 0.35em;
   border-radius: 3px;
   font-size: 0.9em;
+}
+
+/* ---- Lista de folios (clon de pag.reportes.des.php) ---- */
+.btn-icono {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: #f6f6f6;
+  border: 1px solid #ddd;
+  color: #888;
+  font-size: 17px;
+  line-height: 1;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+  cursor: pointer;
+}
+.titulo-reporte {
+  text-align: center;
+  font-size: 1.5em;
+  font-weight: 700;
+  margin: 0.6em 0 0.8em;
+}
+.leyenda {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 15px;
+}
+.leyenda tr:nth-child(even) {
+  background: #eee;
+}
+.leyenda td {
+  padding: 1px 0;
+}
+.leyenda-num {
+  width: 50px;
+}
+.buscador {
+  display: flex;
+  align-items: center;
+  gap: 0.3em;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2);
+  padding: 0.2em 0.5em;
+  width: 15rem;
+}
+.buscador span {
+  color: #666;
+}
+.buscador input {
+  flex: 1;
+  outline: none;
+  background: transparent;
+  font-size: 15px;
+}
+.link-tienda {
+  color: #000;
+  font-weight: 700;
+  text-decoration: underline;
+}
+
+/* ---- Detalle del folio (clon de pag.incidencias_edita.php) ---- */
+.detalle-getic {
+  max-width: 1100px;
+  margin: 0 auto;
+  text-shadow: none;
+}
+.seccion-titulo {
+  font-weight: 700;
+  font-size: 1.05em;
+  margin: 0.8em 0 0.5em;
+}
+.caja {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.6em 1em 1em;
+}
+.tabla-apertura {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.tabla-apertura td {
+  padding: 4px 8px;
+  vertical-align: top;
+}
+.tabla-apertura td:first-child {
+  width: 35%;
+}
+.tabla-apertura tr:nth-child(even) {
+  background: #f2f2f2;
+}
+.tabla-ultimas {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  background: rgba(82, 255, 0, 0.57);
+}
+.tabla-ultimas th {
+  text-align: left;
+  background: #fff;
+  padding: 4px 8px;
+}
+.tabla-ultimas td {
+  padding: 4px 8px;
+}
+.historial-extra {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.5em 0.8em;
+}
+.historial-extra p {
+  margin-bottom: 0.4em;
+}
+.estado-accion {
+  padding: 0.6em 0;
+  font-size: 15px;
+}
+.estado-accion.error {
+  color: #c00;
+  font-weight: 700;
+}
+.chat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6em;
+  padding: 0.5em 0;
+  font-size: 13px;
+}
+.chat-item {
+  display: flex;
+}
+.chat-item.otro {
+  justify-content: flex-start;
+}
+.chat-item.mio {
+  justify-content: flex-end;
+}
+.chat-item.historia {
+  justify-content: center;
+}
+.burbuja {
+  max-width: 75%;
+  padding: 0.5em 0.8em;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+  background: #fff;
+}
+.chat-item.historia .burbuja {
+  background: #e6e6e6;
+  border-color: #e6e6e6;
+  text-align: center;
+}
+.chat-item.mio .burbuja {
+  background: #dcf8c6;
+  border-color: #c5e8ad;
+}
+.chat-usuario {
+  font-size: 11px;
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+.chat-fecha {
+  font-size: 10px;
+  opacity: 0.6;
+  text-align: right;
+  margin-top: 2px;
+}
+.chat-input {
+  display: flex;
+  gap: 0.5em;
+  align-items: flex-end;
+  margin-top: 0.5em;
+}
+.chat-input textarea {
+  flex: 1;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 0.4em;
+  font-size: 14px;
+  outline: none;
+}
+.chat-input button {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: #333;
+  color: #fff;
+  cursor: pointer;
+}
+.chat-input button:disabled {
+  background: #ccc;
+  cursor: default;
 }

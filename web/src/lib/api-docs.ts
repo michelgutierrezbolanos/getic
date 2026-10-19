@@ -77,6 +77,27 @@ export const ENDPOINTS: Endpoint[] = [
           fecha_resuelto: null,
           tiempo_restante: "15:59:36",
           tiempo_vencido: false,
+          inc_id: "1830394",
+          latitud: 21.03128974,
+          longitud: -105.2542751,
+          sla_minutos: 1440,
+          fecha_limite: "2026-10-19T11:27:00-06:00",
+          comentarios: [
+            { usuario: null, mensaje: "Estado actualizado a [Confirmado] por: Michel…", fecha: "18/10/2026 19:23", tipo: "historia" },
+          ],
+          historial_tienda: [
+            {
+              folio: "INC11564790",
+              inc_id: "1731184",
+              tipo: "Incidencia",
+              concepto: "OPV CCTV-HARDWARE",
+              nombre: "Luis Alberto Arias Cuevas",
+              fecha: "24/03/2026",
+              descripcion: "…",
+              diagnostico: "…",
+              solucion: "…",
+            },
+          ],
         },
       ],
     },
@@ -157,7 +178,7 @@ export const ENDPOINTS: Endpoint[] = [
     ruta: "/api/bot/acciones",
     titulo: "Acciones pendientes",
     descripcion:
-      "Lo que el usuario pidió desde la app y el bot debe ejecutar en Getic. accion: tomar | confirmar | llegada | cierre | checada | solicitud. En cierre, payload.whatsapp trae el mensaje listo.",
+      "Lo que el usuario pidió desde la app y el bot debe ejecutar en Getic. accion: tomar | confirmar | llegada | cierre | comentario | checada | solicitud. En cierre, payload.whatsapp trae el mensaje listo; en comentario, payload.texto.",
     query: "estado=pendiente (por defecto) | procesando | hecho | error, limit=50",
     respuesta: [
       {

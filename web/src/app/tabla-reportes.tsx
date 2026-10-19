@@ -1,14 +1,18 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import {
+  ESTADOS_GETIC,
   colorFila,
+  estadoGetic,
   estaCerrado,
   formatFecha,
   ordenarReportes,
   tiempoEnVivo,
+  urlMapa,
   type Reporte,
 } from "@/lib/reportes";
 
@@ -50,11 +54,11 @@ const COLUMNAS: Columna[] = [
     titulo: "CR/ Nombre Tienda",
     celda: (r) => (
       <DosLineas
-        arriba={r.cliente}
+        arriba={<b>{r.cliente}</b>}
         abajo={
-          <Link href={`/reportes/${encodeURIComponent(r.folio)}`} className="link-fuerte">
+          <a href={urlMapa(r)} target="_blank" rel="noopener noreferrer" className="link-tienda">
             {[r.cr, r.tienda].filter(Boolean).join(" - ")}
-          </Link>
+          </a>
         }
       />
     ),
@@ -83,9 +87,9 @@ const COLUMNAS: Columna[] = [
       const t = tiempoEnVivo(r, ahora);
       if (!t) return null;
       return (
-        <span className="tiempo" style={{ color: t.vencido ? "#ff1f1f" : "#000" }}>
+        <h3 className="tiempo" style={{ color: t.vencido ? "#ff0000" : "#000" }}>
           {t.texto}
-        </span>
+        </h3>
       );
     },
   },
@@ -94,11 +98,11 @@ const COLUMNAS: Columna[] = [
 const CLAVE_COLUMNAS = "getic_columnas_ocultas";
 
 export default function TablaReportes({ iniciales }: { iniciales: Reporte[] }) {
+  const router = useRouter();
   const [reportes, setReportes] = useState(iniciales);
   const [busqueda, setBusqueda] = useState("");
   const [ocultas, setOcultas] = useState<string[]>([]);
   const [menuColumnas, setMenuColumnas] = useState(false);
-  const [verCerrados, setVerCerrados] = useState(false);
   const [ahora, setAhora] = useState(() => Date.now());
 
   // Reloj para el tiempo restante
@@ -137,8 +141,7 @@ export default function TablaReportes({ iniciales }: { iniciales: Reporte[] }) {
             return prev.filter((r) => r.folio !== folio);
           }
           const nuevo = payload.new as Reporte;
-          const resto = prev.filter((r) => r.folio !== nuevo.folio);
-          return [...resto, nuevo];
+          return [...prev.filter((r) => r.folio !== nuevo.folio), nuevo];
         });
       })
       .subscribe();
@@ -147,43 +150,61 @@ export default function TablaReportes({ iniciales }: { iniciales: Reporte[] }) {
     };
   }, []);
 
+  const activos = useMemo(() => reportes.filter((r) => !estaCerrado(r.estado)), [reportes]);
+
+  const conteo = useMemo(() => {
+    const c: Record<string, number> = {};
+    for (const r of activos) c[estadoGetic(r.estado)] = (c[estadoGetic(r.estado)] ?? 0) + 1;
+    return c;
+  }, [activos]);
+
   const visibles = useMemo(() => {
     const q = busqueda.trim().toLowerCase();
-    const filtrados = reportes.filter((r) => {
-      if (!verCerrados && estaCerrado(r.estado)) return false;
-      if (!q) return true;
-      return [r.folio, r.cr, r.tienda, r.ingeniero_asignado, r.grupo_servicio, r.concepto_servicio, r.prioridad]
-        .filter(Boolean)
-        .some((v) => String(v).toLowerCase().includes(q));
-    });
+    const filtrados = activos.filter((r) =>
+      !q
+        ? true
+        : [r.folio, r.cr, r.tienda, r.ingeniero_asignado, r.grupo_servicio, r.concepto_servicio, r.prioridad, r.estado]
+            .filter(Boolean)
+            .some((v) => String(v).toLowerCase().includes(q)),
+    );
     return ordenarReportes(filtrados);
-  }, [reportes, busqueda, verCerrados]);
+  }, [activos, busqueda]);
 
+  const plaza = reportes.find((r) => r.plaza)?.plaza ?? "OPV-Prov Vallarta";
   const columnas = COLUMNAS.filter((c) => !ocultas.includes(c.id));
 
   return (
     <div>
-      <div className="mb-3 flex flex-wrap items-center gap-2">
-        <div className="relative">
-          <span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-xs text-gray-500">
-            🔍
-          </span>
-          <input
-            className="jqm-input w-60 pl-7"
-            value={busqueda}
-            onChange={(e) => setBusqueda(e.target.value)}
-            aria-label="Buscar"
-          />
+      <div className="flex items-center justify-between">
+        <button className="btn-icono" title="Recargar" aria-label="Recargar" onClick={() => router.refresh()}>
+          ⟳
+        </button>
+        <button className="btn-icono" title="Regresar" aria-label="Regresar" onClick={() => router.back()}>
+          ↶
+        </button>
+      </div>
+
+      <h2 className="titulo-reporte">Reporte de Incidencias : {plaza}</h2>
+
+      <table className="leyenda">
+        <tbody>
+          {ESTADOS_GETIC.map(({ estado, color }) => (
+            <tr key={estado}>
+              <td>{estado}</td>
+              <td className="leyenda-num" style={{ backgroundColor: color }}>
+                {conteo[estado] ?? 0}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      <div className="my-3 flex items-center gap-2">
+        <div className="buscador">
+          <span aria-hidden>⌕</span>
+          <input value={busqueda} onChange={(e) => setBusqueda(e.target.value)} aria-label="Buscar" />
         </div>
-        <label className="flex items-center gap-1 text-sm">
-          <input type="checkbox" checked={verCerrados} onChange={(e) => setVerCerrados(e.target.checked)} />
-          Ver cerrados
-        </label>
-        <span className="text-sm opacity-70">{visibles.length} reporte(s)</span>
-        <div className="relative ml-auto flex gap-2">
-          <Link href="/reportes/nuevo" className="btn-negro">
-            + Nuevo
-          </Link>
+        <div className="relative ml-auto">
           <button className="btn-negro" onClick={() => setMenuColumnas((v) => !v)}>
             Columnas
           </button>
@@ -217,9 +238,7 @@ export default function TablaReportes({ iniciales }: { iniciales: Reporte[] }) {
             {visibles.length === 0 && (
               <tr>
                 <td colSpan={columnas.length} className="py-8 text-center font-normal">
-                  {reportes.length === 0
-                    ? "Aún no hay reportes. El bot los irá cargando aquí."
-                    : "Ningún reporte coincide con la búsqueda."}
+                  {activos.length === 0 ? "Sin folios en proceso." : "Ningún folio coincide con la búsqueda."}
                 </td>
               </tr>
             )}
