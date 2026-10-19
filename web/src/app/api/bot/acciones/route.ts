@@ -27,8 +27,8 @@ export async function GET(req: NextRequest) {
 
   const [{ data: perfiles }, { data: solicitudes }] = await Promise.all([
     perfilIds.length
-      ? db.from("perfiles").select("id, nombre, email, enviar_portal_alternativo").in("id", perfilIds)
-      : Promise.resolve({ data: [] as { id: string; nombre: string; email: string; enviar_portal_alternativo: boolean }[] }),
+      ? db.from("perfiles").select("id, nombre, email").in("id", perfilIds)
+      : Promise.resolve({ data: [] as { id: string; nombre: string; email: string }[] }),
     solicitudIds.length
       ? db.from("solicitudes").select("*").in("id", solicitudIds)
       : Promise.resolve({ data: [] as Record<string, unknown>[] }),

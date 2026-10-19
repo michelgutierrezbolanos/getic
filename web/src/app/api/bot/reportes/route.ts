@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { botAutorizado, fallo, leerJson, noAutorizado, perfilDestino } from "@/lib/bot";
+import { botAutorizado, fallo, leerJson, noAutorizado } from "@/lib/bot";
 import { estaCerrado, normalizarReporte, type Reporte } from "@/lib/reportes";
 
 // GET /api/bot/reportes[?activos=true][&estado=Confirmado]
@@ -17,8 +17,7 @@ export async function GET(req: NextRequest) {
 }
 
 // POST /api/bot/reportes
-// Body: un reporte, una lista, o { "email": "...", "reportes": [...] }.
-// Con "email", si ese usuario tiene "Enviar datos a portal alternativo" en NO, no se guarda nada.
+// Body: un reporte, una lista de reportes, o { "reportes": [...] }. Upsert por "folio".
 export async function POST(req: NextRequest) {
   if (!botAutorizado(req)) return noAutorizado();
 
@@ -27,12 +26,7 @@ export async function POST(req: NextRequest) {
 
   let lista: Record<string, unknown>[];
   if (body && !Array.isArray(body) && Array.isArray((body as { reportes?: unknown }).reportes)) {
-    const { email, reportes } = body as { email?: string; reportes: Record<string, unknown>[] };
-    if (email !== undefined) {
-      const destino = await perfilDestino(email);
-      if (destino.respuesta) return destino.respuesta;
-    }
-    lista = reportes;
+    lista = (body as { reportes: Record<string, unknown>[] }).reportes;
   } else {
     lista = (Array.isArray(body) ? body : [body]) as Record<string, unknown>[];
   }

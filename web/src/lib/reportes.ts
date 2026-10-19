@@ -64,6 +64,8 @@ export const CAMPOS_EDITABLES = [
   "solucion",
   "vobo",
   "atiende",
+  "folio_falso",
+  "evidencias",
 ] as const;
 
 export const CAMPOS_FECHA = [

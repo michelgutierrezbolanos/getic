@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { botAutorizado, fallo, leerJson, noAutorizado, perfilDestino, perfilPorEmail } from "@/lib/bot";
+import { botAutorizado, fallo, leerJson, noAutorizado, perfilRequerido, perfilPorEmail } from "@/lib/bot";
 
 // GET /api/bot/vehiculo?email=...
 export async function GET(req: NextRequest) {
@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
   const body = (await leerJson(req)) as
     | { email?: string; placa?: string | null; numero_economico?: string | null }
     | undefined;
-  const destino = await perfilDestino(body?.email);
+  const destino = await perfilRequerido(body?.email);
   if (destino.respuesta) return destino.respuesta;
 
   const { error } = await createAdminClient()

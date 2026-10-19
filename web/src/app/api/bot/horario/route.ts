@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { botAutorizado, fallo, leerJson, noAutorizado, perfilDestino, perfilPorEmail } from "@/lib/bot";
+import { botAutorizado, fallo, leerJson, noAutorizado, perfilRequerido, perfilPorEmail } from "@/lib/bot";
 
 type Dia = { fecha: string; entrada?: string; comida?: string; salida?: string; descanso?: boolean };
 
@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
   if (!botAutorizado(req)) return noAutorizado();
   const body = (await leerJson(req)) as { email?: string; dias?: Dia[] } | undefined;
   if (!Array.isArray(body?.dias) || body.dias.length === 0) return fallo("Falta la lista dias");
-  const destino = await perfilDestino(body.email);
+  const destino = await perfilRequerido(body.email);
   if (destino.respuesta) return destino.respuesta;
 
   const filas = body.dias.map((d) => ({

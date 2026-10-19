@@ -3,7 +3,6 @@ import LogoutButton from "@/app/logout-button";
 
 const LINKS = [
   { href: "/", texto: "Reportes" },
-  { href: "/configuracion", texto: "Configuración" },
   { href: "/api-docs", texto: "API" },
 ];
 

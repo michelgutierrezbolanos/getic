@@ -94,6 +94,4 @@ Datos del ingeniero que carga el bot (se identifica por `email`):
 
 Entra al portal → **API** (`/api-docs`): todos los endpoints con body, respuesta y ejemplo curl. `GET /api/bot` devuelve la misma lista en JSON.
 
-## Configuración por usuario
-
-Portal → **Configuración**: "Enviar datos a portal alternativo" Sí/No. Los admin (`perfiles.rol = 'admin'`) ven y cambian a todos los usuarios. Requiere `supabase/migrations/0004_configuracion.sql`.
+Acciones del folio para el bot: `POST /api/bot/reportes/{folio}/tomar`, `/confirmar`, `/llegada` y `/cerrar` (este último con `solucion`, `vobo` y `atiende`). Solicitudes: `POST /api/bot/solicitudes`.

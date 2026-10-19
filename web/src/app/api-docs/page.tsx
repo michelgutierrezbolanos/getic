@@ -45,21 +45,15 @@ export default async function ApiDocs() {
             <code className="codigo-linea">Authorization: Bearer &lt;BOT_API_KEY&gt;</code> y responden JSON. Los
             errores vienen como <code className="codigo-linea">{`{ "error": "..." }`}</code> con código 4xx/5xx.
           </p>
-          <div className="aviso mt-4">
-            <b>Enviar datos a portal alternativo.</b> Cada usuario la activa o desactiva en{" "}
-            <a href="/configuracion" className="underline">
-              Configuración
-            </a>
-            . Los endpoints marcados con <span className="etiqueta-opcion">respeta opción</span> no guardan nada
-            si ese usuario está en NO y responden <code className="codigo-linea">{`{ "ok": true, "omitido": true }`}</code>.
-            Usa <code className="codigo-linea">GET /api/bot/usuarios?enviar=true</code> para sincronizar solo a
-            los usuarios en SÍ.
-          </div>
 
           <h2 className="mt-6 text-lg font-bold">Flujo del bot</h2>
           <ol className="ml-5 mt-2 list-decimal space-y-1">
-            <li>Leer usuarios activos con <code className="codigo-linea">GET /api/bot/usuarios?enviar=true</code>.</li>
-            <li>Por cada uno, leer Getic y mandar reportes, horario, vehículo y checadas.</li>
+            <li>Leer Getic y mandar reportes, horario, vehículo y checadas.</li>
+            <li>
+              Cuando el bot tome, confirme, marque llegada o cierre un folio en Getic, avisar al portal con{" "}
+              <code className="codigo-linea">POST /api/bot/reportes/&#123;folio&#125;/tomar</code> (o confirmar,
+              llegada, cerrar).
+            </li>
             <li>
               Cada pocos segundos, <code className="codigo-linea">GET /api/bot/acciones</code>, ejecutar cada acción
               en Getic (o el WhatsApp de cierre) y marcarla con{" "}
@@ -86,7 +80,6 @@ export default async function ApiDocs() {
                       {e.metodo}
                     </span>
                     <code className="font-bold">{e.ruta}</code>
-                    {e.respetaOpcion && <span className="etiqueta-opcion">respeta opción</span>}
                   </div>
                   <h3 className="mt-2 font-bold">{e.titulo}</h3>
                   <p className="mt-1 text-sm">{e.descripcion}</p>

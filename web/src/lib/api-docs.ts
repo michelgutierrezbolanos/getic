@@ -9,8 +9,6 @@ export type Endpoint = {
   query?: string;
   body?: unknown;
   respuesta?: unknown;
-  /** Respeta "Enviar datos a portal alternativo": si el usuario está en NO, responde { ok, omitido: true } sin guardar. */
-  respetaOpcion?: boolean;
 };
 
 export const ENDPOINTS: Endpoint[] = [
@@ -28,8 +26,7 @@ export const ENDPOINTS: Endpoint[] = [
     ruta: "/api/bot/usuarios",
     titulo: "Listar usuarios",
     descripcion:
-      "Usuarios del portal con su opción \"Enviar datos a portal alternativo\". Usa ?enviar=true para obtener solo los que la tienen en SÍ y sincronizar únicamente esos.",
-    query: "enviar=true | false (opcional)",
+      "Usuarios del portal. Los endpoints de checador, horario, vehículo y solicitudes identifican al usuario por su email.",
     respuesta: [
       {
         id: "uuid",
@@ -37,7 +34,6 @@ export const ENDPOINTS: Endpoint[] = [
         email: "michel.gutierrez@getic.com.mx",
         puesto: "Ingeniero de Campo",
         rol: "admin",
-        enviar_portal_alternativo: true,
       },
     ],
   },
@@ -55,10 +51,8 @@ export const ENDPOINTS: Endpoint[] = [
     ruta: "/api/bot/reportes",
     titulo: "Crear o actualizar reportes",
     descripcion:
-      "Upsert por folio. Acepta un reporte, una lista, o { email, reportes } para aplicar la opción del usuario. Las fechas pueden ir como en Getic (dd/mm/aaaa hh:mm AM/PM).",
-    respetaOpcion: true,
+      "Upsert por folio. Acepta un reporte, una lista o { reportes: [...] }. Las fechas pueden ir como en Getic (dd/mm/aaaa hh:mm AM/PM) o en ISO.",
     body: {
-      email: "michel.gutierrez@getic.com.mx",
       reportes: [
         {
           folio: "INC14911536",
@@ -113,7 +107,52 @@ export const ENDPOINTS: Endpoint[] = [
     respuesta: { ok: true },
   },
   {
-    grupo: "Acciones de la app",
+    grupo: "Acciones del folio",
+    metodo: "POST",
+    ruta: "/api/bot/reportes/{folio}/tomar",
+    titulo: "Tomar incidencia",
+    descripcion:
+      "Pone el estado en \"Asignado\" y guarda fecha_asignacion (ahora, o la que mandes en fecha). Puedes mandar también ingeniero_asignado u otros campos.",
+    body: { fecha: "18/10/2026 07:23 PM", ingeniero_asignado: "Michel Alejandro Gutiérrez Bolaños" },
+    respuesta: { ok: true, reporte: { folio: "INC14911536", estado: "Asignado", fecha_asignacion: "2026-10-18T19:23:00-06:00" } },
+  },
+  {
+    grupo: "Acciones del folio",
+    metodo: "POST",
+    ruta: "/api/bot/reportes/{folio}/confirmar",
+    titulo: "Confirmar incidencia",
+    descripcion: "Pone el estado en \"Confirmado\" y guarda fecha_confirmacion. Body opcional.",
+    body: { fecha: "18/10/2026 07:25 PM" },
+    respuesta: { ok: true, reporte: { folio: "INC14911536", estado: "Confirmado" } },
+  },
+  {
+    grupo: "Acciones del folio",
+    metodo: "POST",
+    ruta: "/api/bot/reportes/{folio}/llegada",
+    titulo: "Marcar llegada a sitio",
+    descripcion: "Pone el estado en \"En sitio\" y guarda fecha_llegada. Body opcional (puedes mandar el nuevo tiempo_restante).",
+    body: { fecha: "18/10/2026 08:15 PM", tiempo_restante: "1:20:00" },
+    respuesta: { ok: true, reporte: { folio: "INC14911536", estado: "En sitio" } },
+  },
+  {
+    grupo: "Acciones del folio",
+    metodo: "POST",
+    ruta: "/api/bot/reportes/{folio}/cerrar",
+    titulo: "Cerrar folio",
+    descripcion:
+      "Pone el estado en \"Cerrado\", guarda fecha_resuelto y los datos del cierre. solucion, vobo y atiende son obligatorios; folio_falso (#NSF / #FDR) y evidencias son opcionales.",
+    body: {
+      solucion: "Se reinició el DVR y se reconfiguró la cámara 3",
+      vobo: "Gerente de tienda",
+      atiende: "Michel Gutierrez",
+      folio_falso: null,
+      evidencias: ["INC14911536/1729300000_0.jpg"],
+      fecha: "18/10/2026 09:40 PM",
+    },
+    respuesta: { ok: true, reporte: { folio: "INC14911536", estado: "Cerrado" } },
+  },
+  {
+    grupo: "Pedidos desde la app",
     metodo: "GET",
     ruta: "/api/bot/acciones",
     titulo: "Acciones pendientes",
@@ -140,13 +179,13 @@ export const ENDPOINTS: Endpoint[] = [
           evidencias: ["INC14911536/1729300000_0.jpg"],
         },
         reporte: { folio: "INC14911536", "…": "…" },
-        perfil: { nombre: "Michel Gutierrez", email: "michel.gutierrez@getic.com.mx", enviar_portal_alternativo: true },
+        perfil: { nombre: "Michel Gutierrez", email: "michel.gutierrez@getic.com.mx" },
         solicitud: null,
       },
     ],
   },
   {
-    grupo: "Acciones de la app",
+    grupo: "Pedidos desde la app",
     metodo: "PATCH",
     ruta: "/api/bot/acciones/{id}",
     titulo: "Marcar resultado de una acción",
@@ -169,7 +208,6 @@ export const ENDPOINTS: Endpoint[] = [
     ruta: "/api/bot/checadas",
     titulo: "Registrar checada hecha en Getic",
     descripcion: "tipo: inicio | comida_inicio | comida_fin | salida.",
-    respetaOpcion: true,
     body: { email: "michel.gutierrez@getic.com.mx", tipo: "inicio", hora: "19/10/2026 08:28 AM" },
     respuesta: { ok: true },
   },
@@ -187,7 +225,6 @@ export const ENDPOINTS: Endpoint[] = [
     ruta: "/api/bot/horario",
     titulo: "Cargar horario",
     descripcion: "Upsert por día. Los días de descanso van con descanso: true.",
-    respetaOpcion: true,
     body: {
       email: "michel.gutierrez@getic.com.mx",
       dias: [
@@ -211,7 +248,6 @@ export const ENDPOINTS: Endpoint[] = [
     ruta: "/api/bot/vehiculo",
     titulo: "Asignar vehículo",
     descripcion: "Para quitarlo manda placa y numero_economico en null.",
-    respetaOpcion: true,
     body: { email: "michel.gutierrez@getic.com.mx", placa: "FKS316D", numero_economico: "237" },
     respuesta: { ok: true },
   },
@@ -222,6 +258,15 @@ export const ENDPOINTS: Endpoint[] = [
     titulo: "Listar solicitudes",
     descripcion: "Gasolina, aumento de velocidad y TAG, con el usuario que la pidió.",
     query: "estado=pendiente, email=... (opcionales)",
+  },
+  {
+    grupo: "Solicitudes",
+    metodo: "POST",
+    ruta: "/api/bot/solicitudes",
+    titulo: "Crear solicitud",
+    descripcion: "tipo: gasolina | velocidad | tag. datos es libre (kilometraje, monto, motivo...). estado por defecto: pendiente.",
+    body: { email: "michel.gutierrez@getic.com.mx", tipo: "gasolina", datos: { kilometraje: "45210", monto: "500" } },
+    respuesta: { ok: true, solicitud: { id: 7, tipo: "gasolina", estado: "pendiente" } },
   },
   {
     grupo: "Solicitudes",

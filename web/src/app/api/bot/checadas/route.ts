@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { botAutorizado, fallo, leerJson, noAutorizado, perfilDestino, perfilPorEmail } from "@/lib/bot";
+import { botAutorizado, fallo, leerJson, noAutorizado, perfilRequerido, perfilPorEmail } from "@/lib/bot";
 import { parseFechaGetic } from "@/lib/reportes";
 
 const TIPOS = ["inicio", "comida_inicio", "comida_fin", "salida"];
@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
     | { email?: string; tipo?: string; hora?: string; fecha?: string }
     | undefined;
   if (!body?.tipo || !TIPOS.includes(body.tipo)) return fallo(`tipo debe ser ${TIPOS.join(", ")}`);
-  const destino = await perfilDestino(body.email);
+  const destino = await perfilRequerido(body.email);
   if (destino.respuesta) return destino.respuesta;
 
   const hora = body.hora ? parseFechaGetic(body.hora) : new Date().toISOString();
