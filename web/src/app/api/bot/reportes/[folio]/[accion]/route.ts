@@ -11,7 +11,7 @@ import { normalizarReporte, parseFechaGetic } from "@/lib/reportes";
 const ACCIONES = {
   tomar: { estado: "Asignado", fecha: "fecha_asignacion" },
   confirmar: { estado: "Confirmado", fecha: "fecha_confirmacion" },
-  llegada: { estado: "En sitio", fecha: "fecha_llegada" },
+  llegada: { estado: "LlegadaSitio", fecha: "fecha_llegada" },
   cerrar: { estado: "Cerrado", fecha: "fecha_resuelto" },
 } as const;
 

@@ -15,6 +15,13 @@ type Accion = {
   created_at: string;
 };
 
+/** Estado y fecha que cambia cada botón (igual que en la app móvil). */
+const CAMBIO_ESTADO: Record<string, { estado: string; fecha: string }> = {
+  tomar: { estado: "Asignado", fecha: "fecha_asignacion" },
+  confirmar: { estado: "Confirmado", fecha: "fecha_confirmacion" },
+  llegada: { estado: "LlegadaSitio", fecha: "fecha_llegada" },
+};
+
 const NOMBRE_ACCION: Record<string, string> = {
   tomar: "Tomar incidencia",
   confirmar: "Confirmar incidencia",
@@ -69,10 +76,25 @@ export default function DetalleFolio({ inicial, miNombre }: { inicial: Reporte; 
 
   async function pedir(accion: string, payload: Record<string, unknown> = {}) {
     setError(null);
-    const { error } = await createClient().from("acciones_bot").insert({ folio: r.folio, accion, payload });
+    const supabase = createClient();
+    const cambio = CAMBIO_ESTADO[accion];
+    const { error } = await supabase
+      .from("acciones_bot")
+      .insert({ folio: r.folio, accion, payload: cambio ? { ...payload, estado_anterior: r.estado } : payload });
     if (error) {
       setError(error.message);
       return false;
+    }
+    // El estado cambia al instante en el portal; el bot lo replica en Getic (y lo revierte si falla)
+    if (cambio) {
+      const fecha = new Date().toISOString();
+      const { data } = await supabase
+        .from("reportes")
+        .update({ estado: cambio.estado, [cambio.fecha]: fecha })
+        .eq("folio", r.folio)
+        .select()
+        .maybeSingle();
+      if (data) setR(data as Reporte);
     }
     await cargarAcciones();
     return true;

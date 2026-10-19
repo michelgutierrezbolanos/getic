@@ -116,8 +116,8 @@ export const ENDPOINTS: Endpoint[] = [
     ruta: "/api/bot/reportes/{folio}",
     titulo: "Actualizar campos de un reporte",
     descripcion: "Manda solo lo que cambió (por ejemplo después de marcar llegada en Getic).",
-    body: { estado: "En sitio", fecha_llegada: "18/10/2026 08:15 PM", tiempo_restante: "1:20:00" },
-    respuesta: { ok: true, reporte: { folio: "INC14911536", estado: "En sitio" } },
+    body: { estado: "LlegadaSitio", fecha_llegada: "18/10/2026 08:15 PM", tiempo_restante: "1:20:00" },
+    respuesta: { ok: true, reporte: { folio: "INC14911536", estado: "LlegadaSitio" } },
   },
   {
     grupo: "Reportes",
@@ -151,9 +151,9 @@ export const ENDPOINTS: Endpoint[] = [
     metodo: "POST",
     ruta: "/api/bot/reportes/{folio}/llegada",
     titulo: "Marcar llegada a sitio",
-    descripcion: "Pone el estado en \"En sitio\" y guarda fecha_llegada. Body opcional (puedes mandar el nuevo tiempo_restante).",
+    descripcion: "Pone el estado en \"LlegadaSitio\" y guarda fecha_llegada. Body opcional (puedes mandar el nuevo tiempo_restante).",
     body: { fecha: "18/10/2026 08:15 PM", tiempo_restante: "1:20:00" },
-    respuesta: { ok: true, reporte: { folio: "INC14911536", estado: "En sitio" } },
+    respuesta: { ok: true, reporte: { folio: "INC14911536", estado: "LlegadaSitio" } },
   },
   {
     grupo: "Acciones del folio",
@@ -178,7 +178,7 @@ export const ENDPOINTS: Endpoint[] = [
     ruta: "/api/bot/acciones",
     titulo: "Acciones pendientes",
     descripcion:
-      "Lo que el usuario pidió desde la app y el bot debe ejecutar en Getic. accion: tomar | confirmar | llegada | cierre | comentario | checada | solicitud. En cierre, payload.whatsapp trae el mensaje listo; en comentario, payload.texto.",
+      "Lo que el usuario pidió desde la app y el bot debe ejecutar en Getic. accion: tomar | confirmar | llegada | cierre | comentario | checada | solicitud. En tomar/confirmar/llegada la app YA cambió el estado en el portal; si Getic falla, regresa el reporte a payload.estado_anterior. En cierre, payload.whatsapp trae los datos del machote para el grupo; en comentario, payload.texto.",
     query: "estado=pendiente (por defecto) | procesando | hecho | error, limit=50",
     respuesta: [
       {
