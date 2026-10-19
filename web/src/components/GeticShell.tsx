@@ -42,6 +42,9 @@ export default function GeticShell({
         <Link href="/" aria-label="Inicio">
           <GeticLogo width={80} color="#111" />
         </Link>
+        <Link href="/api-docs" className="btn-api" title="Documentación de la API del bot">
+          API
+        </Link>
         <button className="btn-redondo der" aria-label="Lista de tareas" onClick={() => setDer(true)}>
           <IcoLista />
         </button>
