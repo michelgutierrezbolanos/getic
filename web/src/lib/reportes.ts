@@ -243,6 +243,13 @@ export function urlMapa(r: Pick<Reporte, "latitud" | "longitud" | "cr" | "tienda
   return `https://maps.google.com/maps?f=q&q=${encodeURIComponent(q)}`;
 }
 
+/** Getic no deja tomar el folio hasta que tenga grupo y concepto de servicio. */
+export function sinGrupoConcepto(r: Pick<Reporte, "grupo_servicio" | "concepto_servicio">) {
+  const g = (r.grupo_servicio ?? "").toLowerCase();
+  const c = (r.concepto_servicio ?? "").toLowerCase();
+  return g === "" || g.includes("indefinido") || c.includes("indefinido");
+}
+
 export const ESTADOS_CERRADOS = ["resuelto", "cerrado", "cancelado"];
 
 export function estaCerrado(estado: string | null) {

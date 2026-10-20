@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { estadoGetic, formatFechaLarga, tiempoEnVivo, urlMapa, type Reporte } from "@/lib/reportes";
+import { estadoGetic, formatFechaLarga, sinGrupoConcepto, tiempoEnVivo, urlMapa, type Reporte } from "@/lib/reportes";
 
 type Accion = {
   id: number;
@@ -100,6 +100,31 @@ export default function DetalleFolio({ inicial, miNombre }: { inicial: Reporte; 
     return true;
   }
 
+  // Toma el folio de otro ingeniero: lo reasigna a mí y reinicia los estados (como en Getic).
+  async function reasignarme() {
+    if (!confirm(`${r.folio} quedará a tu cargo y volverá a "Asignado". ¿Continuar?`)) return;
+    setError(null);
+    const supabase = createClient();
+    const { error } = await supabase
+      .from("acciones_bot")
+      .insert({ folio: r.folio, accion: "tomar", payload: { estado_anterior: r.estado, reasignar: true } });
+    if (error) return setError(error.message);
+    const { data } = await supabase
+      .from("reportes")
+      .update({
+        estado: "Asignado",
+        ingeniero_asignado: miNombre,
+        fecha_asignacion: new Date().toISOString(),
+        fecha_confirmacion: null,
+        fecha_llegada: null,
+      })
+      .eq("folio", r.folio)
+      .select()
+      .maybeSingle();
+    if (data) setR(data as Reporte);
+    await cargarAcciones();
+  }
+
   const estado = estadoGetic(r.estado);
   const enCurso = acciones.find((a) => a.accion !== "comentario" && (a.estado === "pendiente" || a.estado === "procesando"));
   const ultimoError = acciones.find((a) => a.accion !== "comentario" && a.estado === "error");
@@ -179,7 +204,12 @@ export default function DetalleFolio({ inicial, miNombre }: { inicial: Reporte; 
 
       {/* Acción según el estado, como los botones de Getic */}
       <div className="caja mt-4">
-        {enCurso ? (
+        {sinGrupoConcepto(r) && estado !== "Resuelto" ? (
+          <p className="estado-accion" style={{ color: "#b35c00" }}>
+            ⚠ Este folio aún no tiene grupo y concepto de servicio. Asígnalos en Getic antes de tomarlo; si no, Getic
+            no lo registra aunque la app lo deje avanzar.
+          </p>
+        ) : enCurso ? (
           <p className="estado-accion">
             ⏳ <b>{NOMBRE_ACCION[enCurso.accion] ?? enCurso.accion}</b>: enviando a Getic…
           </p>
@@ -205,6 +235,12 @@ export default function DetalleFolio({ inicial, miNombre }: { inicial: Reporte; 
             )}
             {estado === "LlegadaSitio" && <FormCierre reporte={r} miNombre={miNombre} pedir={pedir} setError={setError} />}
             {estado === "Resuelto" && <p className="estado-accion">Folio resuelto.</p>}
+            {/* Tomar un folio que ya tiene otro ingeniero (reinicia los estados) */}
+            {["Asignado", "Confirmado", "LlegadaSitio"].includes(estado) && (
+              <button className="jqm-btn-small mt-3" onClick={reasignarme}>
+                Reasignarme este folio
+              </button>
+            )}
           </>
         )}
         {error && <p className="estado-accion error">{error}</p>}
