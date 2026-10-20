@@ -3,3 +3,6 @@
 .env.local
 /mobile/
 /bot/
+
+# APK generado localmente (no subir)
+*.apk
