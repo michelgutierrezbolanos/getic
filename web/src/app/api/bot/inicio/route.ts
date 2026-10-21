@@ -23,12 +23,18 @@ export async function POST(req: NextRequest) {
   if (!body?.datos || typeof body.datos !== "object") return fallo("Falta datos");
   const destino = await perfilRequerido(body.email);
   if (destino.respuesta) return destino.respuesta;
-  const { error } = await createAdminClient()
+  const admin = createAdminClient();
+  // Merge: conserva otras claves (p. ej. gas, que escribe la sincronización por
+  // ingeniero) en vez de reemplazar todo el jsonb y borrarlas.
+  const { data: previo } = await admin
     .from("inicio_getic")
-    .upsert(
-      { perfil_id: destino.perfil.id, datos: body.datos, updated_at: new Date().toISOString() },
-      { onConflict: "perfil_id" },
-    );
+    .select("datos")
+    .eq("perfil_id", destino.perfil.id)
+    .maybeSingle();
+  const datos = { ...((previo?.datos as Record<string, unknown>) ?? {}), ...body.datos };
+  const { error } = await admin
+    .from("inicio_getic")
+    .upsert({ perfil_id: destino.perfil.id, datos, updated_at: new Date().toISOString() }, { onConflict: "perfil_id" });
   if (error) return fallo(error.message, 500);
   return NextResponse.json({ ok: true });
 }
