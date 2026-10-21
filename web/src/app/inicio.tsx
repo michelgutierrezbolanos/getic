@@ -14,6 +14,7 @@ import {
   IcoVelocidad,
 } from "@/components/iconos";
 import { ZONA, estaCerrado, tiempoEnVivo, type Reporte } from "@/lib/reportes";
+import GasolinaPanel from "@/components/gasolina-panel";
 
 export type DiaHorario = {
   fecha: string;
@@ -116,6 +117,7 @@ export default function Inicio({
   const [busqueda, setBusqueda] = useState("");
   const [foliosAbierto, setFoliosAbierto] = useState(true);
   const [ahora, setAhora] = useState(() => Date.now());
+  const [gasAbierto, setGasAbierto] = useState(false);
 
   useEffect(() => {
     const id = setInterval(() => setAhora(Date.now()), 1000);
@@ -161,6 +163,7 @@ export default function Inicio({
 
   return (
     <div className="inicio-getic">
+      <GasolinaPanel open={gasAbierto} onClose={() => setGasAbierto(false)} />
       <Colapsable titulo={`Dias sin siniestros: ${diasSiniestros ?? "—"}`}>
         <p className="text-sm opacity-60">Sin información.</p>
       </Colapsable>
@@ -232,7 +235,7 @@ export default function Inicio({
       <div className="caja tarjeta-fila">
         <b className="text-xl">Solicitar</b>
         <div className="flex gap-2">
-          <button className="btn-circulo naranja" onClick={nada} aria-label="Solicitar gasolina">
+          <button className="btn-circulo naranja" onClick={() => setGasAbierto(true)} aria-label="Solicitar gasolina">
             <IcoGas />
           </button>
           <button className="btn-circulo gris" onClick={nada} aria-label="Solicitar aumento de velocidad">
