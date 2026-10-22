@@ -24,11 +24,15 @@ export type IngenieroPanel = {
 
 export type GasIngeniero = { id: string; nombre: string; actual: Solicitud | null; historial: Solicitud[] };
 
+export type Nota = { id: number; folio: string; nombre: string | null; texto: string; created_at: string };
+
 export type DatosPanel = {
   ingenieros: IngenieroPanel[];
   resumen: { activos: number; pausa: number; vencidos: number; gasPendiente: number };
   gasolina: GasIngeniero[];
   cerrados: Reporte[];
+  notasPorFolio: Record<string, Nota[]>;
+  notasRecientes: Nota[];
 };
 
 const norm = (s: string | null | undefined) => (s ?? "").toLowerCase().replace(/\s+/g, " ").trim();
@@ -55,7 +59,7 @@ export async function rolActual(): Promise<string | null> {
 /** Toda la información que muestra el panel (leída con el cliente admin). */
 export async function datosPanel(): Promise<DatosPanel> {
   const admin = createAdminClient();
-  const [{ data: reps }, { data: sols }, { data: perfs }] = await Promise.all([
+  const [{ data: reps }, { data: sols }, { data: perfs }, { data: nots }] = await Promise.all([
     admin.from("reportes").select("*"),
     admin
       .from("solicitudes")
@@ -63,10 +67,12 @@ export async function datosPanel(): Promise<DatosPanel> {
       .eq("tipo", "gasolina")
       .order("created_at", { ascending: false }),
     admin.from("perfiles").select("id, nombre, rol"),
+    admin.from("notas_internas").select("id, folio, nombre, texto, created_at").order("created_at", { ascending: false }),
   ]);
 
   const reportes = (reps ?? []) as Reporte[];
   const solicitudes = (sols ?? []) as Solicitud[];
+  const notas = (nots ?? []) as Nota[];
   const ingenierosPerf = ((perfs ?? []) as { id: string; nombre: string; rol: string }[]).filter(
     (p) => p.rol === "ingeniero",
   );
@@ -105,5 +111,10 @@ export async function datosPanel(): Promise<DatosPanel> {
     })
     .filter((g) => g.actual || g.historial.length);
 
-  return { ingenieros, resumen, gasolina, cerrados };
+  const notasPorFolio: Record<string, Nota[]> = {};
+  for (const n of notas) (notasPorFolio[n.folio] ??= []).push(n); // ya vienen de la más reciente a la más vieja
+  for (const folio in notasPorFolio) notasPorFolio[folio].reverse(); // en el detalle, cronológicas
+  const notasRecientes = notas.slice(0, 15);
+
+  return { ingenieros, resumen, gasolina, cerrados, notasPorFolio, notasRecientes };
 }

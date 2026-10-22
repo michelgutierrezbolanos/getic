@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { formatFechaLarga, type Reporte } from "@/lib/reportes";
-import type { DatosPanel, GasIngeniero, Solicitud } from "@/lib/supervisor";
+import type { DatosPanel, GasIngeniero, Nota, Solicitud } from "@/lib/supervisor";
 
 // Colores
 const C = { amber: "#854F0B", amberBg: "#FAEEDA", green: "#0F6E56", greenBg: "#E1F5EE", red: "#A32D2D", redBg: "#FCEBEB", gray: "#444441", grayBg: "#F1EFE8", blue: "#0C447C", blueBg: "#E6F1FB" };
@@ -62,9 +62,30 @@ export default function PanelSupervisor({ datos }: { datos: DatosPanel }) {
 
       <Resumen r={datos.resumen} />
       <Ingenieros lista={datos.ingenieros} />
+      <NotasRecientes lista={datos.notasRecientes} />
       <GasolinaActual lista={datos.gasolina} />
       <HistorialGas lista={datos.gasolina} />
-      <Cerrados lista={datos.cerrados} />
+      <Cerrados lista={datos.cerrados} notas={datos.notasPorFolio} />
+    </div>
+  );
+}
+
+function NotasRecientes({ lista }: { lista: Nota[] }) {
+  if (!lista.length) return null;
+  return (
+    <div>
+      <p style={titSec}>Notas internas recientes</p>
+      <div style={{ ...card, overflow: "hidden" }}>
+        {lista.map((n, i) => (
+          <div key={n.id} style={{ padding: "9px 12px", borderTop: i ? "0.5px solid var(--border)" : undefined }}>
+            <div style={{ fontSize: 13 }}>
+              <b>{n.folio}</b> · {n.nombre ?? "—"}
+            </div>
+            <div style={{ fontSize: 13 }}>{n.texto}</div>
+            <div style={label}>{formatFechaLarga(n.created_at)}</div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -240,7 +261,7 @@ function HistorialGas({ lista }: { lista: GasIngeniero[] }) {
   );
 }
 
-function Cerrados({ lista }: { lista: Reporte[] }) {
+function Cerrados({ lista, notas }: { lista: Reporte[]; notas: Record<string, Nota[]> }) {
   const [abierto, setAbierto] = useState<string | null>(null);
   return (
     <div>
@@ -289,7 +310,20 @@ function Cerrados({ lista }: { lista: Reporte[] }) {
                       </div>
                     )}
                   </div>
-                  <div style={{ marginTop: 10, ...label }}>Notas internas: (próximamente — Fase 2)</div>
+                  <div style={{ marginTop: 10 }}>
+                    <div style={label}>Notas internas</div>
+                    {(notas[r.folio] ?? []).length === 0 ? (
+                      <div style={{ fontSize: 13, color: "var(--text-muted)" }}>Sin notas internas.</div>
+                    ) : (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 4 }}>
+                        {(notas[r.folio] ?? []).map((n) => (
+                          <div key={n.id} style={{ fontSize: 13 }}>
+                            <b>{n.nombre ?? "—"}:</b> {n.texto} <span style={label}>· {formatFechaLarga(n.created_at)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
