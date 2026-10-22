@@ -1,0 +1,109 @@
+import "server-only";
+import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { estaCerrado, estadoGetic, tiempoEnVivo, type Reporte } from "@/lib/reportes";
+
+export type Solicitud = {
+  id: number;
+  perfil_id: string;
+  tipo: string;
+  estado: string;
+  datos: Record<string, unknown>;
+  created_at: string;
+};
+
+export type IngenieroPanel = {
+  id: string;
+  nombre: string;
+  tomados: number;
+  confirmados: number;
+  enSitio: number;
+  pausa: number;
+  activos: number;
+};
+
+export type GasIngeniero = { id: string; nombre: string; actual: Solicitud | null; historial: Solicitud[] };
+
+export type DatosPanel = {
+  ingenieros: IngenieroPanel[];
+  resumen: { activos: number; pausa: number; vencidos: number; gasPendiente: number };
+  gasolina: GasIngeniero[];
+  cerrados: Reporte[];
+};
+
+const norm = (s: string | null | undefined) => (s ?? "").toLowerCase().replace(/\s+/g, " ").trim();
+
+/** ¿El folio es de este ingeniero? (coincidencia flexible por nombre, como en la app). */
+function mismoIngeniero(reporteNombre: string | null, perfilNombre: string) {
+  const a = norm(reporteNombre);
+  const b = norm(perfilNombre);
+  if (!a || !b) return false;
+  return a === b || a.startsWith(b) || b.startsWith(a);
+}
+
+/** Rol del usuario logueado (para proteger el panel). */
+export async function rolActual(): Promise<string | null> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return null;
+  const { data } = await supabase.from("perfiles").select("rol").eq("id", user.id).maybeSingle();
+  return (data?.rol as string | undefined) ?? null;
+}
+
+/** Toda la información que muestra el panel (leída con el cliente admin). */
+export async function datosPanel(): Promise<DatosPanel> {
+  const admin = createAdminClient();
+  const [{ data: reps }, { data: sols }, { data: perfs }] = await Promise.all([
+    admin.from("reportes").select("*"),
+    admin
+      .from("solicitudes")
+      .select("id, perfil_id, tipo, estado, datos, created_at")
+      .eq("tipo", "gasolina")
+      .order("created_at", { ascending: false }),
+    admin.from("perfiles").select("id, nombre, rol"),
+  ]);
+
+  const reportes = (reps ?? []) as Reporte[];
+  const solicitudes = (sols ?? []) as Solicitud[];
+  const ingenierosPerf = ((perfs ?? []) as { id: string; nombre: string; rol: string }[]).filter(
+    (p) => p.rol === "ingeniero",
+  );
+  const ahora = Date.now();
+
+  const activos = reportes.filter((r) => !estaCerrado(r.estado));
+  const cerrados = reportes
+    .filter((r) => estaCerrado(r.estado))
+    .sort((a, b) => (b.fecha_resuelto ?? b.updated_at ?? "").localeCompare(a.fecha_resuelto ?? a.updated_at ?? ""));
+
+  const ingenieros: IngenieroPanel[] = ingenierosPerf.map((p) => {
+    const mios = activos.filter((r) => mismoIngeniero(r.ingeniero_asignado, p.nombre));
+    const cnt = (e: string) => mios.filter((r) => estadoGetic(r.estado) === e).length;
+    return {
+      id: p.id,
+      nombre: p.nombre,
+      tomados: cnt("Asignado"),
+      confirmados: cnt("Confirmado"),
+      enSitio: cnt("LlegadaSitio"),
+      pausa: mios.filter((r) => r.pausado_at).length,
+      activos: mios.length,
+    };
+  });
+
+  const resumen = {
+    activos: activos.length,
+    pausa: activos.filter((r) => r.pausado_at).length,
+    vencidos: activos.filter((r) => tiempoEnVivo(r, ahora)?.vencido).length,
+    gasPendiente: solicitudes.filter((s) => s.estado === "enviada" || s.estado === "autorizada").length,
+  };
+
+  const gasolina: GasIngeniero[] = ingenierosPerf
+    .map((p) => {
+      const suyas = solicitudes.filter((s) => s.perfil_id === p.id); // ya vienen de la más reciente a la más vieja
+      return { id: p.id, nombre: p.nombre, actual: suyas[0] ?? null, historial: suyas.slice(1) };
+    })
+    .filter((g) => g.actual || g.historial.length);
+
+  return { ingenieros, resumen, gasolina, cerrados };
+}

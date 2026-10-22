@@ -1,13 +1,26 @@
 import GeticShell from "@/components/GeticShell";
+import PanelSupervisor from "@/components/PanelSupervisor";
 import type { Reporte } from "@/lib/reportes";
 import { sesionActual } from "@/lib/sesion";
+import { datosPanel, rolActual } from "@/lib/supervisor";
 import Inicio, { type DiaHorario } from "./inicio";
 
 export const dynamic = "force-dynamic";
 
-// Clon de index.php de Getic. Solo los folios tienen función; lo demás es visual.
+// El supervisor ve el panel; los demás (ingenieros) el clon de Getic.
 export default async function Home() {
   const { supabase, user, nombre, puesto, inicio } = await sesionActual();
+
+  if ((await rolActual()) === "supervisor") {
+    const datos = await datosPanel();
+    return (
+      <GeticShell nombre={nombre} puesto="Supervisor">
+        <main className="jqm-content fade-in">
+          <PanelSupervisor datos={datos} />
+        </main>
+      </GeticShell>
+    );
+  }
   const [{ data: reportes }, { data: horario }, { data: vehiculo }] = await Promise.all([
     supabase.from("reportes").select("*"),
     supabase.from("horarios").select("fecha, entrada, comida, salida, descanso").eq("perfil_id", user?.id ?? ""),
