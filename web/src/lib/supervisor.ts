@@ -30,6 +30,7 @@ export type DatosPanel = {
   ingenieros: IngenieroPanel[];
   resumen: { activos: number; pausa: number; vencidos: number; gasPendiente: number };
   gasolina: GasIngeniero[];
+  activos: Reporte[];
   cerrados: Reporte[];
   notasPorFolio: Record<string, Nota[]>;
   notasRecientes: Nota[];
@@ -111,10 +112,17 @@ export async function datosPanel(): Promise<DatosPanel> {
     })
     .filter((g) => g.actual || g.historial.length);
 
+  // Activos para mostrar: primero los en pausa, luego por estado.
+  const rangoActivo = (r: Reporte) =>
+    r.pausado_at ? 0 : ({ Asignado: 1, Confirmado: 2, LlegadaSitio: 3 } as Record<string, number>)[estadoGetic(r.estado)] ?? 4;
+  const activosOrdenados = [...activos].sort(
+    (a, b) => rangoActivo(a) - rangoActivo(b) || (a.ingeniero_asignado ?? "").localeCompare(b.ingeniero_asignado ?? ""),
+  );
+
   const notasPorFolio: Record<string, Nota[]> = {};
   for (const n of notas) (notasPorFolio[n.folio] ??= []).push(n); // ya vienen de la más reciente a la más vieja
   for (const folio in notasPorFolio) notasPorFolio[folio].reverse(); // en el detalle, cronológicas
   const notasRecientes = notas.slice(0, 15);
 
-  return { ingenieros, resumen, gasolina, cerrados, notasPorFolio, notasRecientes };
+  return { ingenieros, resumen, gasolina, activos: activosOrdenados, cerrados, notasPorFolio, notasRecientes };
 }

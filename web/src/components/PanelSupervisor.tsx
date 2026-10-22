@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { formatFechaLarga, type Reporte } from "@/lib/reportes";
+import { estadoGetic, formatFechaLarga, type Reporte } from "@/lib/reportes";
 import type { DatosPanel, GasIngeniero, Nota, Solicitud } from "@/lib/supervisor";
 
 // Colores
@@ -65,6 +65,7 @@ export default function PanelSupervisor({ datos }: { datos: DatosPanel }) {
       <NotasRecientes lista={datos.notasRecientes} />
       <GasolinaActual lista={datos.gasolina} />
       <HistorialGas lista={datos.gasolina} />
+      <Activos lista={datos.activos} notas={datos.notasPorFolio} />
       <Cerrados lista={datos.cerrados} notas={datos.notasPorFolio} />
     </div>
   );
@@ -261,74 +262,130 @@ function HistorialGas({ lista }: { lista: GasIngeniero[] }) {
   );
 }
 
+function estadoActivo(estado: string | null): { color: string; bg: string; texto: string } {
+  switch (estadoGetic(estado)) {
+    case "Asignado":
+      return { color: C.blue, bg: C.blueBg, texto: "Asignado" };
+    case "Confirmado":
+      return { color: C.gray, bg: C.grayBg, texto: "Confirmado" };
+    case "LlegadaSitio":
+      return { color: C.green, bg: C.greenBg, texto: "En sitio" };
+    default:
+      return { color: C.gray, bg: C.grayBg, texto: "Sin asignar" };
+  }
+}
+
+function Comentarios({ r }: { r: Reporte }) {
+  const coms = (r.comentarios ?? []).filter((c) => c.tipo !== "historia");
+  return (
+    <div style={{ marginTop: 10 }}>
+      <div style={label}>Comentarios de Getic</div>
+      {coms.length === 0 ? (
+        <div style={{ fontSize: 13, color: "var(--text-muted)" }}>Sin comentarios.</div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 4 }}>
+          {coms.map((c, i) => (
+            <div key={i} style={{ fontSize: 13 }}>
+              <b>{c.usuario ?? "—"}:</b> {c.mensaje} <span style={label}>· {c.fecha}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function NotasFolio({ notas }: { notas: Nota[] }) {
+  return (
+    <div style={{ marginTop: 10 }}>
+      <div style={label}>Notas internas</div>
+      {notas.length === 0 ? (
+        <div style={{ fontSize: 13, color: "var(--text-muted)" }}>Sin notas internas.</div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 4 }}>
+          {notas.map((n) => (
+            <div key={n.id} style={{ fontSize: 13 }}>
+              <b>{n.nombre ?? "—"}:</b> {n.texto} <span style={label}>· {formatFechaLarga(n.created_at)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TarjetaFolio({ r, notas, cerrado }: { r: Reporte; notas: Nota[]; cerrado: boolean }) {
+  const [open, setOpen] = useState(false);
+  const pausa = !!r.pausado_at;
+  const est = estadoActivo(r.estado);
+  return (
+    <div style={{ ...card, overflow: "hidden", ...(pausa && !cerrado ? { border: "1px solid #EF9F27" } : {}) }}>
+      <button
+        onClick={() => setOpen(!open)}
+        style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", background: "none", border: "none", textAlign: "left", cursor: "pointer" }}
+      >
+        <i className={cerrado ? "ti ti-circle-check" : "ti ti-clipboard-list"} style={{ fontSize: 18, color: cerrado ? "#1D9E75" : "var(--text-secondary)" }} aria-hidden="true" />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 13, fontWeight: 500 }}>{r.folio} · {r.ingeniero_asignado ?? "—"}</div>
+          <div style={label}>{r.cr} - {r.tienda}{cerrado ? ` · cerrado ${formatFechaLarga(r.fecha_resuelto)}` : ""}</div>
+        </div>
+        {!cerrado && pausa && <span style={{ fontSize: 11, color: C.amber, background: C.amberBg, padding: "2px 9px", borderRadius: 20, whiteSpace: "nowrap" }}>En pausa</span>}
+        {!cerrado && <span style={{ fontSize: 11, color: est.color, background: est.bg, padding: "2px 9px", borderRadius: 20, whiteSpace: "nowrap" }}>{est.texto}</span>}
+        {notas.length > 0 && <span style={{ fontSize: 11, color: C.amber, background: C.amberBg, padding: "2px 7px", borderRadius: 20 }}><i className="ti ti-note" aria-hidden="true" /> {notas.length}</span>}
+        <i className={`ti ti-chevron-${open ? "up" : "down"}`} style={{ fontSize: 18, color: "var(--text-muted)" }} aria-hidden="true" />
+      </button>
+      {open && (
+        <div style={{ borderTop: "0.5px solid var(--border)", padding: "10px 12px" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px 12px" }}>
+            <Dato t="Grupo · Concepto" v={`${r.grupo_servicio ?? "—"} · ${r.concepto_servicio ?? "—"}`} />
+            <Dato t={cerrado ? "Atiende" : "Estado"} v={cerrado ? r.atiende ?? "—" : r.estado ?? "—"} />
+          </div>
+          {!cerrado && pausa && (
+            <div style={{ marginTop: 8 }}>
+              <Dato t="En pausa desde" v={formatFechaLarga(r.pausado_at)} />
+            </div>
+          )}
+          {cerrado && (
+            <>
+              <div style={{ marginTop: 8 }}>
+                <Dato t="Solución" v={r.solucion ?? "—"} />
+              </div>
+              <div style={{ marginTop: 8 }}>
+                <Dato t="VoBo" v={r.vobo ?? "—"} />
+              </div>
+            </>
+          )}
+          <Comentarios r={r} />
+          <NotasFolio notas={notas} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Activos({ lista, notas }: { lista: Reporte[]; notas: Record<string, Nota[]> }) {
+  return (
+    <div>
+      <p style={titSec}>Folios activos (en pausa primero)</p>
+      {lista.length === 0 && <p style={{ color: "var(--text-muted)", fontSize: 13 }}>Sin folios activos.</p>}
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {lista.map((r) => (
+          <TarjetaFolio key={r.folio} r={r} notas={notas[r.folio] ?? []} cerrado={false} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function Cerrados({ lista, notas }: { lista: Reporte[]; notas: Record<string, Nota[]> }) {
-  const [abierto, setAbierto] = useState<string | null>(null);
   return (
     <div>
       <p style={titSec}>Reportes cerrados (historial)</p>
       {lista.length === 0 && <p style={{ color: "var(--text-muted)", fontSize: 13 }}>Sin reportes cerrados.</p>}
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        {lista.slice(0, 50).map((r) => {
-          const open = abierto === r.folio;
-          const coms = (r.comentarios ?? []).filter((c) => c.tipo !== "historia");
-          return (
-            <div key={r.folio} style={{ ...card, overflow: "hidden" }}>
-              <button
-                onClick={() => setAbierto(open ? null : r.folio)}
-                style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", background: "none", border: "none", textAlign: "left", cursor: "pointer" }}
-              >
-                <i className="ti ti-circle-check" style={{ fontSize: 18, color: "#1D9E75" }} aria-hidden="true" />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13, fontWeight: 500 }}>{r.folio} · {r.ingeniero_asignado ?? "—"}</div>
-                  <div style={label}>{r.cr} - {r.tienda} · cerrado {formatFechaLarga(r.fecha_resuelto)}</div>
-                </div>
-                <i className={`ti ti-chevron-${open ? "up" : "down"}`} style={{ fontSize: 18, color: "var(--text-muted)" }} aria-hidden="true" />
-              </button>
-              {open && (
-                <div style={{ borderTop: "0.5px solid var(--border)", padding: "10px 12px" }}>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px 12px" }}>
-                    <Dato t="Grupo · Concepto" v={`${r.grupo_servicio ?? "—"} · ${r.concepto_servicio ?? "—"}`} />
-                    <Dato t="Atiende" v={r.atiende ?? "—"} />
-                  </div>
-                  <div style={{ marginTop: 8 }}>
-                    <Dato t="Solución" v={r.solucion ?? "—"} />
-                  </div>
-                  <div style={{ marginTop: 8 }}>
-                    <Dato t="VoBo" v={r.vobo ?? "—"} />
-                  </div>
-                  <div style={{ marginTop: 10 }}>
-                    <div style={label}>Comentarios de Getic</div>
-                    {coms.length === 0 ? (
-                      <div style={{ fontSize: 13, color: "var(--text-muted)" }}>Sin comentarios.</div>
-                    ) : (
-                      <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 4 }}>
-                        {coms.map((c, i) => (
-                          <div key={i} style={{ fontSize: 13 }}>
-                            <b>{c.usuario ?? "—"}:</b> {c.mensaje} <span style={label}>· {c.fecha}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                  <div style={{ marginTop: 10 }}>
-                    <div style={label}>Notas internas</div>
-                    {(notas[r.folio] ?? []).length === 0 ? (
-                      <div style={{ fontSize: 13, color: "var(--text-muted)" }}>Sin notas internas.</div>
-                    ) : (
-                      <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 4 }}>
-                        {(notas[r.folio] ?? []).map((n) => (
-                          <div key={n.id} style={{ fontSize: 13 }}>
-                            <b>{n.nombre ?? "—"}:</b> {n.texto} <span style={label}>· {formatFechaLarga(n.created_at)}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          );
-        })}
+        {lista.slice(0, 50).map((r) => (
+          <TarjetaFolio key={r.folio} r={r} notas={notas[r.folio] ?? []} cerrado />
+        ))}
       </div>
     </div>
   );
