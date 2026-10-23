@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { estadoGetic, formatFechaLarga, type Reporte } from "@/lib/reportes";
 import type { DatosPanel, GasIngeniero, Nota, Solicitud } from "@/lib/supervisor";
@@ -345,15 +346,19 @@ function Modal({ children, onClose }: { children: React.ReactNode; onClose: () =
     document.addEventListener("keydown", h);
     return () => document.removeEventListener("keydown", h);
   }, [onClose]);
-  return (
-    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.5)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, zIndex: 100 }}>
+  if (typeof document === "undefined") return null;
+  // Portal a <body>: así el modal escapa del transform del panel lateral
+  // y queda SIEMPRE centrado en la pantalla visible, no a media página.
+  return createPortal(
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.5)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, zIndex: 1000 }}>
       <div onClick={(e) => e.stopPropagation()} style={{ background: COL.cardBg, color: COL.pageText, borderRadius: 12, border: `1px solid ${COL.cardBorder}`, maxWidth: 520, width: "100%", maxHeight: "85vh", overflowY: "auto", padding: 22, boxShadow: "0 12px 40px rgba(0,0,0,.25)" }}>
         <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: -8 }}>
           <button onClick={onClose} aria-label="Cerrar" style={{ fontSize: 22, lineHeight: 1, background: "none", border: "none", cursor: "pointer", color: COL.sec, textShadow: "none" }}>×</button>
         </div>
         {children}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
