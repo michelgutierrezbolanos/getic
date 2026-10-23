@@ -2,6 +2,11 @@ import type { HorarioIngeniero } from "@/lib/supervisor";
 
 const DIAS = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
 
+const COL = {
+  pageText: "#2b2b2b", sec: "#5a6672", muted: "#8a929b",
+  cardBg: "#ffffff", cardBorder: "#e3e6ea", accent: "#1f539f", hoy: "#e7f0fb",
+};
+
 function nombreDia(fecha: string): string {
   return DIAS[new Date(`${fecha}T12:00:00Z`).getUTCDay()];
 }
@@ -31,68 +36,70 @@ export default function HorariosSupervisor({ semana, ingenieros }: { semana: str
   })();
 
   return (
-    <div style={{ maxWidth: 860, margin: "0 auto", padding: "16px 14px", display: "flex", flexDirection: "column", gap: 16 }}>
+    <div style={{ maxWidth: 1500, margin: "0 auto", padding: "22px 28px", display: "flex", flexDirection: "column", gap: 18, color: COL.pageText }}>
       <div>
-        <b style={{ fontSize: 20 }}>Horarios</b>
-        <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>Semana actual · Vallarta</div>
+        <b style={{ fontSize: 22, textShadow: "none" }}>Horarios</b>
+        <div style={{ fontSize: 13, color: COL.sec, textShadow: "none" }}>Semana actual · Vallarta</div>
       </div>
 
-      {ingenieros.length === 0 && <p style={{ color: "var(--text-muted)", fontSize: 13 }}>Sin ingenieros.</p>}
+      {ingenieros.length === 0 && <p style={{ color: COL.muted, fontSize: 13 }}>Sin ingenieros.</p>}
 
-      {ingenieros.map((ing) => {
-        const tiene = semana.some((f) => ing.dias[f]);
-        return (
-          <div key={ing.id} style={{ background: "var(--surface-2)", border: "0.5px solid var(--border)", borderRadius: 12, overflow: "hidden" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "11px 13px", borderBottom: "0.5px solid var(--border)" }}>
-              <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#2C2C2A", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 600 }}>
-                {iniciales(ing.nombre)}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(420px, 1fr))", gap: 16 }}>
+        {ingenieros.map((ing) => {
+          const tiene = semana.some((f) => ing.dias[f]);
+          return (
+            <div key={ing.id} style={{ background: COL.cardBg, border: `1px solid ${COL.cardBorder}`, borderRadius: 12, overflow: "hidden" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", borderBottom: `1px solid ${COL.cardBorder}` }}>
+                <div style={{ width: 30, height: 30, borderRadius: "50%", background: "#2C2C2A", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 600, textShadow: "none" }}>
+                  {iniciales(ing.nombre)}
+                </div>
+                <b style={{ fontSize: 15, textShadow: "none" }}>{ing.nombre}</b>
               </div>
-              <b style={{ fontSize: 14 }}>{ing.nombre}</b>
-            </div>
-            {!tiene ? (
-              <div style={{ padding: "12px 13px", fontSize: 13, color: "var(--text-muted)" }}>Aún no se ha cargado su horario (reingresa en la app).</div>
-            ) : (
-              <div>
-                {semana.map((f) => {
-                  const d = ing.dias[f];
-                  const esHoy = f === hoy;
-                  return (
-                    <div
-                      key={f}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 10,
-                        padding: "9px 13px",
-                        borderTop: "0.5px solid var(--border)",
-                        background: esHoy ? "var(--bg-accent, rgba(47,107,216,.08))" : undefined,
-                      }}
-                    >
-                      <div style={{ width: 120, flex: "none" }}>
-                        <div style={{ fontSize: 13, fontWeight: 500 }}>
-                          {nombreDia(f)} {esHoy ? <span style={{ color: "var(--text-accent)", fontSize: 11 }}>· HOY</span> : null}
+              {!tiene ? (
+                <div style={{ padding: "14px", fontSize: 13, color: COL.muted }}>Aún no se ha cargado su horario (reingresa en la app).</div>
+              ) : (
+                <div>
+                  {semana.map((f) => {
+                    const d = ing.dias[f];
+                    const esHoy = f === hoy;
+                    return (
+                      <div
+                        key={f}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 10,
+                          padding: "10px 14px",
+                          borderTop: `1px solid ${COL.cardBorder}`,
+                          background: esHoy ? COL.hoy : undefined,
+                        }}
+                      >
+                        <div style={{ width: 130, flex: "none" }}>
+                          <div style={{ fontSize: 13, fontWeight: 600, textShadow: "none" }}>
+                            {nombreDia(f)} {esHoy ? <span style={{ color: COL.accent, fontSize: 11 }}>· HOY</span> : null}
+                          </div>
+                          <div style={{ fontSize: 11, color: COL.muted }}>{ddmm(f)}</div>
                         </div>
-                        <div style={{ fontSize: 11, color: "var(--text-muted)" }}>{ddmm(f)}</div>
+                        <div style={{ flex: 1, fontSize: 13, color: COL.pageText, textShadow: "none" }}>
+                          {!d ? (
+                            <span style={{ color: COL.muted }}>Sin horario</span>
+                          ) : d.descanso ? (
+                            <span style={{ color: COL.sec }}>Descanso</span>
+                          ) : (
+                            <span>
+                              Entrada {hora12(d.entrada)} · Comida {hora12(d.comida)} · Salida {hora12(d.salida)}
+                            </span>
+                          )}
+                        </div>
                       </div>
-                      <div style={{ flex: 1, fontSize: 13 }}>
-                        {!d ? (
-                          <span style={{ color: "var(--text-muted)" }}>Sin horario</span>
-                        ) : d.descanso ? (
-                          <span style={{ color: "var(--text-secondary)" }}>Descanso</span>
-                        ) : (
-                          <span>
-                            Entrada {hora12(d.entrada)} · Comida {hora12(d.comida)} · Salida {hora12(d.salida)}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        );
-      })}
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
