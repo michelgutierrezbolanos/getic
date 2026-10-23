@@ -137,6 +137,20 @@ function Ingenieros({ lista }: { lista: DatosPanel["ingenieros"] }) {
               <Badge icon="map-pin" texto={`En sitio ${p.enSitio}`} color={C.green} bg={C.greenBg} />
               <Badge icon="player-pause" texto={`Pausa ${p.pausa}`} color={C.amber} bg={C.amberBg} />
             </div>
+            <div style={{ fontSize: 12, marginTop: 6 }}>
+              {p.masCercano ? (
+                <span style={{ color: "var(--text-secondary)" }}>
+                  <i className="ti ti-navigation" aria-hidden="true" /> Más cercano: {p.masCercano.tienda} · a {p.masCercano.km} km
+                </span>
+              ) : (
+                <span style={{ color: "var(--text-muted)" }}>
+                  <i className="ti ti-location-off" aria-hidden="true" /> Sin ubicación
+                </span>
+              )}
+              {p.ubicadoHaceMin != null && (
+                <span style={{ color: "var(--text-muted)" }}> · ubicación hace {p.ubicadoHaceMin} min</span>
+              )}
+            </div>
           </div>
         ))}
       </div>
