@@ -5,56 +5,60 @@ import { useRouter } from "next/navigation";
 import { estadoGetic, formatFechaLarga, type Reporte } from "@/lib/reportes";
 import type { DatosPanel, GasIngeniero, Nota, Solicitud } from "@/lib/supervisor";
 
-// Colores
-const C = { amber: "#854F0B", amberBg: "#FAEEDA", green: "#0F6E56", greenBg: "#E1F5EE", red: "#A32D2D", redBg: "#FCEBEB", gray: "#444441", grayBg: "#F1EFE8", blue: "#0C447C", blueBg: "#E6F1FB" };
-
-function pillGas(estado: string): { color: string; bg: string; texto: string } {
-  switch (estado) {
-    case "autorizada":
-    case "aprobada":
-      return { color: C.green, bg: C.greenBg, texto: "Autorizada" };
-    case "finalizada":
-      return { color: C.gray, bg: C.grayBg, texto: "Cargada" };
-    case "rechazada":
-      return { color: C.red, bg: C.redBg, texto: "Rechazada" };
-    case "error":
-      return { color: C.red, bg: C.redBg, texto: "Error" };
-    default:
-      return { color: C.amber, bg: C.amberBg, texto: "Enviada" };
-  }
-}
-
-function Pill({ estado }: { estado: string }) {
-  const p = pillGas(estado);
-  return (
-    <span style={{ fontSize: 11, fontWeight: 500, color: p.color, background: p.bg, padding: "2px 9px", borderRadius: 20, whiteSpace: "nowrap" }}>
-      {p.texto}
-    </span>
-  );
-}
-
+const C = {
+  amber: "#9a6710", amberBg: "#faeecb",
+  green: "#126b4f", greenBg: "#d8efe4",
+  red: "#a82a2a", redBg: "#fbe0e0",
+  slate: "#54616f", slateBg: "#e8ebee",
+  blue: "#1f539f", blueBg: "#e1ebfb",
+};
 const card: React.CSSProperties = { background: "var(--surface-2)", border: "0.5px solid var(--border)", borderRadius: 10 };
 const label: React.CSSProperties = { fontSize: 11, color: "var(--text-muted)" };
 const titSec: React.CSSProperties = { fontSize: 13, fontWeight: 500, color: "var(--text-secondary)", margin: "0 0 8px" };
 
-function Dato({ t, v }: { t: string; v: React.ReactNode }) {
-  return (
-    <div>
-      <div style={label}>{t}</div>
-      <div style={{ fontSize: 13 }}>{v}</div>
-    </div>
-  );
+function pillGas(estado: string): { color: string; bg: string; texto: string } {
+  switch (estado) {
+    case "autorizada":
+    case "aprobada": return { color: C.green, bg: C.greenBg, texto: "Autorizada" };
+    case "finalizada": return { color: C.slate, bg: C.slateBg, texto: "Cargada" };
+    case "rechazada": return { color: C.red, bg: C.redBg, texto: "Rechazada" };
+    case "error": return { color: C.red, bg: C.redBg, texto: "Error" };
+    default: return { color: C.amber, bg: C.amberBg, texto: "Enviada" };
+  }
 }
+function Pill({ estado }: { estado: string }) {
+  const p = pillGas(estado);
+  return <span style={{ fontSize: 11, fontWeight: 500, color: p.color, background: p.bg, padding: "2px 9px", borderRadius: 20, whiteSpace: "nowrap" }}>{p.texto}</span>;
+}
+function estadoActivo(estado: string | null): { color: string; bg: string; texto: string } {
+  switch (estadoGetic(estado)) {
+    case "Asignado": return { color: C.blue, bg: C.blueBg, texto: "Asignado" };
+    case "Confirmado": return { color: C.slate, bg: C.slateBg, texto: "Confirmado" };
+    case "LlegadaSitio": return { color: C.green, bg: C.greenBg, texto: "En sitio" };
+    default: return { color: C.slate, bg: C.slateBg, texto: "Sin asignar" };
+  }
+}
+function Dato({ t, v, full }: { t: string; v: React.ReactNode; full?: boolean }) {
+  return <div style={full ? { gridColumn: "1 / -1" } : undefined}><div style={label}>{t}</div><div style={{ fontSize: 13 }}>{v}</div></div>;
+}
+function iniciales(n: string) { const p = n.trim().split(/\s+/).filter(Boolean); return ((p[0]?.[0] ?? "?") + (p[1]?.[0] ?? "")).toUpperCase(); }
+function fechaDe(v: unknown) { return v ? formatFechaLarga(String(v)) : "—"; }
 
 export default function PanelSupervisor({ datos }: { datos: DatosPanel }) {
   const router = useRouter();
-  useEffect(() => {
-    const id = setInterval(() => router.refresh(), 25000);
-    return () => clearInterval(id);
-  }, [router]);
+  const [sec, setSec] = useState<string | null>(null);
+  const [modal, setModal] = useState<React.ReactNode | null>(null);
+  useEffect(() => { const id = setInterval(() => router.refresh(), 25000); return () => clearInterval(id); }, [router]);
+
+  const tabs = [
+    { id: "notas", label: "Notas internas" },
+    { id: "gas", label: "Solicitudes de gasolina" },
+    { id: "activos", label: "Folios activos" },
+    { id: "cerrados", label: "Reportes cerrados" },
+  ];
 
   return (
-    <div style={{ maxWidth: 820, margin: "0 auto", padding: "16px 14px", display: "flex", flexDirection: "column", gap: 20 }}>
+    <div style={{ maxWidth: 860, margin: "0 auto", padding: "16px 14px", display: "flex", flexDirection: "column", gap: 20 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <b style={{ fontSize: 20 }}>Panel de supervisión</b>
         <button onClick={() => router.refresh()} style={{ fontSize: 13 }}>Actualizar</button>
@@ -62,31 +66,27 @@ export default function PanelSupervisor({ datos }: { datos: DatosPanel }) {
 
       <Resumen r={datos.resumen} />
       <Ingenieros lista={datos.ingenieros} />
-      <NotasRecientes lista={datos.notasRecientes} />
-      <GasolinaActual lista={datos.gasolina} />
-      <HistorialGas lista={datos.gasolina} />
-      <Activos lista={datos.activos} notas={datos.notasPorFolio} />
-      <Cerrados lista={datos.cerrados} notas={datos.notasPorFolio} />
-    </div>
-  );
-}
 
-function NotasRecientes({ lista }: { lista: Nota[] }) {
-  if (!lista.length) return null;
-  return (
-    <div>
-      <p style={titSec}>Notas internas recientes</p>
-      <div style={{ ...card, overflow: "hidden" }}>
-        {lista.map((n, i) => (
-          <div key={n.id} style={{ padding: "9px 12px", borderTop: i ? "0.5px solid var(--border)" : undefined }}>
-            <div style={{ fontSize: 13 }}>
-              <b>{n.folio}</b> · {n.nombre ?? "—"}
-            </div>
-            <div style={{ fontSize: 13 }}>{n.texto}</div>
-            <div style={label}>{formatFechaLarga(n.created_at)}</div>
-          </div>
-        ))}
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+        {tabs.map((t) => {
+          const on = sec === t.id;
+          return (
+            <button key={t.id} onClick={() => setSec(on ? null : t.id)}
+              style={{ fontSize: 13, fontWeight: 500, padding: "9px 13px", borderRadius: 10, cursor: "pointer",
+                background: on ? "var(--text-accent)" : "var(--surface-2)", color: on ? "#fff" : "var(--text-primary)",
+                border: `1px solid ${on ? "var(--text-accent)" : "var(--border)"}` }}>
+              {t.label}
+            </button>
+          );
+        })}
       </div>
+
+      {sec === "notas" && <Notas datos={datos} />}
+      {sec === "gas" && <Gasolina lista={datos.gasolina} abrir={setModal} />}
+      {sec === "activos" && <Activos lista={datos.activos} notas={datos.notasPorFolio} />}
+      {sec === "cerrados" && <Cerrados lista={datos.cerrados} notas={datos.notasPorFolio} abrir={setModal} />}
+
+      {modal && <Modal onClose={() => setModal(null)}>{modal}</Modal>}
     </div>
   );
 }
@@ -95,11 +95,11 @@ function Resumen({ r }: { r: DatosPanel["resumen"] }) {
   const tile = (t: string, v: number, color?: string) => (
     <div style={{ background: "var(--surface-1)", borderRadius: 10, padding: 12 }}>
       <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>{t}</div>
-      <div style={{ fontSize: 24, fontWeight: 500, color }}>{v}</div>
+      <div style={{ fontSize: 26, fontWeight: 500, color }}>{v}</div>
     </div>
   );
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 10 }}>
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 10 }}>
       {tile("Folios activos", r.activos)}
       {tile("En pausa", r.pausa, C.amber)}
       {tile("Vencidos", r.vencidos, C.red)}
@@ -108,34 +108,24 @@ function Resumen({ r }: { r: DatosPanel["resumen"] }) {
   );
 }
 
-function Badge({ icon, texto, color, bg }: { icon: string; texto: string; color: string; bg: string }) {
-  return (
-    <span style={{ fontSize: 11, color, background: bg, padding: "2px 8px", borderRadius: 20, whiteSpace: "nowrap" }}>
-      <i className={`ti ti-${icon}`} aria-hidden="true" /> {texto}
-    </span>
-  );
-}
-
 function Ingenieros({ lista }: { lista: DatosPanel["ingenieros"] }) {
+  const chip = (c: string, bg: string, t: string) => <span style={{ fontSize: 11, color: c, background: bg, padding: "2px 9px", borderRadius: 20 }}>{t}</span>;
   return (
     <div>
       <p style={titSec}>Avance por ingeniero</p>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 10 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 10 }}>
         {lista.length === 0 && <p style={{ color: "var(--text-muted)", fontSize: 13 }}>Sin ingenieros registrados.</p>}
         {lista.map((p) => (
           <div key={p.id} style={{ ...card, padding: "10px 12px" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-              <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#2C2C2A", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11 }}>
-                {iniciales(p.nombre)}
-              </div>
+              <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#2C2C2A", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11 }}>{iniciales(p.nombre)}</div>
               <b style={{ fontSize: 14, flex: 1 }}>{p.nombre}</b>
               <span style={{ fontSize: 11, color: "var(--text-secondary)" }}>{p.activos} activos</span>
             </div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-              <Badge icon="hand-finger" texto={`Tomados ${p.tomados}`} color={C.blue} bg={C.blueBg} />
-              <Badge icon="truck" texto={`Confirmados ${p.confirmados}`} color={C.gray} bg={C.grayBg} />
-              <Badge icon="map-pin" texto={`En sitio ${p.enSitio}`} color={C.green} bg={C.greenBg} />
-              <Badge icon="player-pause" texto={`Pausa ${p.pausa}`} color={C.amber} bg={C.amberBg} />
+              {chip(C.blue, C.blueBg, `Tomados ${p.tomados}`)}
+              {chip(C.slate, C.slateBg, `Confirmados ${p.confirmados}`)}
+              {chip(C.green, C.greenBg, `En sitio ${p.enSitio}`)}
             </div>
           </div>
         ))}
@@ -144,112 +134,82 @@ function Ingenieros({ lista }: { lista: DatosPanel["ingenieros"] }) {
   );
 }
 
-function DetalleGas({ s }: { s: Solicitud }) {
-  const d = s.datos ?? {};
-  const rechazada = s.estado === "rechazada";
-  const fecha = (v: unknown) => (v ? formatFechaLarga(String(v)) : "—");
+function Notas({ datos }: { datos: DatosPanel }) {
+  const activoPorFolio = new Map(datos.activos.map((r) => [r.folio, r]));
+  const items: { folio: string; cr: string | null; tienda: string | null; n: Nota }[] = [];
+  for (const [folio, notas] of Object.entries(datos.notasPorFolio)) {
+    const r = activoPorFolio.get(folio);
+    if (!r) continue; // solo folios abiertos
+    for (const n of notas) items.push({ folio, cr: r.cr, tienda: r.tienda, n });
+  }
+  items.sort((a, b) => b.n.created_at.localeCompare(a.n.created_at));
   return (
-    <div style={{ padding: "0 12px 10px", borderTop: "0.5px solid var(--border)" }}>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px 12px", marginTop: 8 }}>
+    <div>
+      <p style={titSec}>Notas internas · solo de folios abiertos</p>
+      {items.length === 0 && <p style={{ color: "var(--text-muted)", fontSize: 13 }}>Sin notas en folios abiertos.</p>}
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {items.map(({ folio, cr, tienda, n }) => (
+          <div key={n.id} style={{ ...card, padding: "10px 12px" }}>
+            <div style={{ fontSize: 13 }}><span style={{ fontVariantNumeric: "tabular-nums" }}>{folio}</span> · {cr} - {tienda}</div>
+            <div style={{ fontSize: 13 }}>{n.texto}</div>
+            <div style={label}><b>{n.nombre ?? "—"}</b> · {formatFechaLarga(n.created_at)}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function DetalleGas({ s }: { s: Solicitud }) {
+  const d = (s.datos ?? {}) as Record<string, unknown>;
+  const rechazada = s.estado === "rechazada";
+  return (
+    <>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+        <b style={{ fontSize: 16 }}>Solicitud de gasolina</b>
+        <Pill estado={s.estado} />
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px 12px" }}>
         <Dato t="Monto solicitado" v={d.monto != null ? `$${d.monto}` : "—"} />
         <Dato t="Monto autorizado" v={d.monto_autorizado != null ? `$${d.monto_autorizado}` : "—"} />
-        <Dato t="Kilometraje" v={`${d.kilometraje ?? "—"}`} />
+        <Dato t="Kilometraje" v={d.kilometraje != null ? String(d.kilometraje) : "—"} />
         <Dato t="Folio foráneo" v={d.foraneo === true ? "Sí" : "No"} />
-        <Dato t="Fecha de solicitud" v={fecha(s.created_at)} />
-        <Dato t="Evidencia enviada" v={fecha(d.evidencia_at)} />
+        <Dato full t={rechazada ? "Motivo de rechazo" : "Mensaje de autorización"} v={d.motivo_getic != null ? String(d.motivo_getic) : "—"} />
+        <Dato t="Fecha de solicitud" v={fechaDe(s.created_at)} />
+        <Dato t="Evidencia enviada" v={fechaDe(d.evidencia_at)} />
       </div>
-      {!rechazada && d.motivo_getic ? (
-        <div style={{ marginTop: 8 }}>
-          <Dato t="Mensaje de autorización" v={`${d.motivo_getic}`} />
-        </div>
-      ) : null}
-      {rechazada ? (
-        <div style={{ marginTop: 8 }}>
-          <Dato t="Motivo de rechazo" v={`${d.motivo_getic ?? "—"}`} />
-        </div>
-      ) : null}
-    </div>
+    </>
   );
 }
 
-function GasolinaActual({ lista }: { lista: GasIngeniero[] }) {
-  const [abierto, setAbierto] = useState<number | null>(null);
-  const conActual = lista.filter((g) => g.actual);
+function Gasolina({ lista, abrir }: { lista: GasIngeniero[]; abrir: (n: React.ReactNode) => void }) {
+  const [open, setOpen] = useState<string | null>(null);
+  const con = lista.filter((g) => g.actual || g.historial.length);
   return (
     <div>
-      <p style={titSec}>Solicitudes de gasolina (actual)</p>
-      {conActual.length === 0 && <p style={{ color: "var(--text-muted)", fontSize: 13 }}>Sin solicitudes activas.</p>}
+      <p style={titSec}>Solicitudes de gasolina · por ingeniero</p>
+      {con.length === 0 && <p style={{ color: "var(--text-muted)", fontSize: 13 }}>Sin solicitudes.</p>}
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        {conActual.map((g) => {
-          const s = g.actual!;
-          const d = s.datos ?? {};
-          const open = abierto === s.id;
+        {con.map((g) => {
+          const todas = [g.actual, ...g.historial].filter(Boolean) as Solicitud[];
+          const ab = open === g.id;
           return (
             <div key={g.id} style={{ ...card, overflow: "hidden" }}>
-              <button
-                onClick={() => setAbierto(open ? null : s.id)}
-                style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", background: "none", border: "none", textAlign: "left", cursor: "pointer" }}
-              >
-                <span style={{ flex: 1, fontSize: 13 }}>
-                  <b>{g.nombre}</b> · ${`${d.monto ?? "—"}`}
-                  {d.foraneo === true ? <span style={{ color: C.amber }}> · Foráneo</span> : null}
-                </span>
-                <Pill estado={s.estado} />
-                <i className={`ti ti-chevron-${open ? "up" : "down"}`} style={{ fontSize: 18, color: "var(--text-muted)" }} aria-hidden="true" />
+              <button onClick={() => setOpen(ab ? null : g.id)} style={headStyle}>
+                <div style={avatarStyle}>{iniciales(g.nombre)}</div>
+                <div style={{ flex: 1 }}><div style={{ fontSize: 14, fontWeight: 500 }}>{g.nombre}</div><div style={label}>{todas.length} solicitudes</div></div>
+                <Chevron up={ab} />
               </button>
-              {open && <DetalleGas s={s} />}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-function HistorialGas({ lista }: { lista: GasIngeniero[] }) {
-  const [abierto, setAbierto] = useState<string | null>(null);
-  const [detalle, setDetalle] = useState<number | null>(null);
-  const conHistorial = lista.filter((g) => g.historial.length);
-  return (
-    <div>
-      <p style={titSec}>Historial de solicitudes de gasolina</p>
-      {conHistorial.length === 0 && <p style={{ color: "var(--text-muted)", fontSize: 13 }}>Aún no hay historial.</p>}
-      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        {conHistorial.map((g) => {
-          const open = abierto === g.id;
-          return (
-            <div key={g.id} style={{ ...card, overflow: "hidden" }}>
-              <button
-                onClick={() => setAbierto(open ? null : g.id)}
-                style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", background: "none", border: "none", textAlign: "left", cursor: "pointer" }}
-              >
-                <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#2C2C2A", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11 }}>
-                  {iniciales(g.nombre)}
-                </div>
-                <b style={{ flex: 1, fontSize: 14 }}>{g.nombre}</b>
-                <span style={{ fontSize: 11, color: "var(--text-secondary)" }}>{g.historial.length} solicitudes</span>
-                <i className={`ti ti-chevron-${open ? "up" : "down"}`} style={{ fontSize: 18, color: "var(--text-muted)" }} aria-hidden="true" />
-              </button>
-              {open && (
+              {ab && (
                 <div style={{ borderTop: "0.5px solid var(--border)", padding: "4px 0" }}>
-                  {g.historial.map((s) => {
-                    const d = s.datos ?? {};
-                    const det = detalle === s.id;
+                  {todas.map((s) => {
+                    const d = (s.datos ?? {}) as Record<string, unknown>;
                     return (
-                      <div key={s.id}>
-                        <button
-                          onClick={() => setDetalle(det ? null : s.id)}
-                          style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "8px 14px", background: "none", border: "none", textAlign: "left", cursor: "pointer" }}
-                        >
-                          <div style={{ flex: 1 }}>
-                            <div style={{ fontSize: 13 }}>${`${d.monto ?? "—"}`}</div>
-                            <div style={label}>{formatFechaLarga(s.created_at)}</div>
-                          </div>
-                          <Pill estado={s.estado} />
-                          <i className={`ti ti-chevron-${det ? "up" : "right"}`} style={{ fontSize: 16, color: "var(--text-muted)" }} aria-hidden="true" />
-                        </button>
-                        {det && <DetalleGas s={s} />}
-                      </div>
+                      <button key={s.id} onClick={() => abrir(<DetalleGas s={s} />)} style={{ ...rowBtn }}>
+                        <span style={{ flex: 1, fontVariantNumeric: "tabular-nums" }}>${`${d.monto ?? "—"}`} · {fechaDe(s.created_at)}</span>
+                        <Pill estado={s.estado} />
+                        <Chevron right />
+                      </button>
                     );
                   })}
                 </div>
@@ -262,138 +222,145 @@ function HistorialGas({ lista }: { lista: GasIngeniero[] }) {
   );
 }
 
-function estadoActivo(estado: string | null): { color: string; bg: string; texto: string } {
-  switch (estadoGetic(estado)) {
-    case "Asignado":
-      return { color: C.blue, bg: C.blueBg, texto: "Asignado" };
-    case "Confirmado":
-      return { color: C.gray, bg: C.grayBg, texto: "Confirmado" };
-    case "LlegadaSitio":
-      return { color: C.green, bg: C.greenBg, texto: "En sitio" };
-    default:
-      return { color: C.gray, bg: C.grayBg, texto: "Sin asignar" };
-  }
-}
-
-function Comentarios({ r }: { r: Reporte }) {
-  const coms = (r.comentarios ?? []).filter((c) => c.tipo !== "historia");
-  return (
-    <div style={{ marginTop: 10 }}>
-      <div style={label}>Comentarios de Getic</div>
-      {coms.length === 0 ? (
-        <div style={{ fontSize: 13, color: "var(--text-muted)" }}>Sin comentarios.</div>
-      ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 4 }}>
-          {coms.map((c, i) => (
-            <div key={i} style={{ fontSize: 13 }}>
-              <b>{c.usuario ?? "—"}:</b> {c.mensaje} <span style={label}>· {c.fecha}</span>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function NotasFolio({ notas }: { notas: Nota[] }) {
-  return (
-    <div style={{ marginTop: 10 }}>
-      <div style={label}>Notas internas</div>
-      {notas.length === 0 ? (
-        <div style={{ fontSize: 13, color: "var(--text-muted)" }}>Sin notas internas.</div>
-      ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 4 }}>
-          {notas.map((n) => (
-            <div key={n.id} style={{ fontSize: 13 }}>
-              <b>{n.nombre ?? "—"}:</b> {n.texto} <span style={label}>· {formatFechaLarga(n.created_at)}</span>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function TarjetaFolio({ r, notas, cerrado }: { r: Reporte; notas: Nota[]; cerrado: boolean }) {
-  const [open, setOpen] = useState(false);
-  const pausa = !!r.pausado_at;
-  const est = estadoActivo(r.estado);
-  return (
-    <div style={{ ...card, overflow: "hidden", ...(pausa && !cerrado ? { border: "1px solid #EF9F27" } : {}) }}>
-      <button
-        onClick={() => setOpen(!open)}
-        style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", background: "none", border: "none", textAlign: "left", cursor: "pointer" }}
-      >
-        <i className={cerrado ? "ti ti-circle-check" : "ti ti-clipboard-list"} style={{ fontSize: 18, color: cerrado ? "#1D9E75" : "var(--text-secondary)" }} aria-hidden="true" />
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 13, fontWeight: 500 }}>{r.folio} · {r.ingeniero_asignado ?? "—"}</div>
-          <div style={label}>{r.cr} - {r.tienda}{cerrado ? ` · cerrado ${formatFechaLarga(r.fecha_resuelto)}` : ""}</div>
-        </div>
-        {!cerrado && pausa && <span style={{ fontSize: 11, color: C.amber, background: C.amberBg, padding: "2px 9px", borderRadius: 20, whiteSpace: "nowrap" }}>En pausa</span>}
-        {!cerrado && <span style={{ fontSize: 11, color: est.color, background: est.bg, padding: "2px 9px", borderRadius: 20, whiteSpace: "nowrap" }}>{est.texto}</span>}
-        {notas.length > 0 && <span style={{ fontSize: 11, color: C.amber, background: C.amberBg, padding: "2px 7px", borderRadius: 20 }}><i className="ti ti-note" aria-hidden="true" /> {notas.length}</span>}
-        <i className={`ti ti-chevron-${open ? "up" : "down"}`} style={{ fontSize: 18, color: "var(--text-muted)" }} aria-hidden="true" />
-      </button>
-      {open && (
-        <div style={{ borderTop: "0.5px solid var(--border)", padding: "10px 12px" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px 12px" }}>
-            <Dato t="Grupo · Concepto" v={`${r.grupo_servicio ?? "—"} · ${r.concepto_servicio ?? "—"}`} />
-            <Dato t={cerrado ? "Atiende" : "Estado"} v={cerrado ? r.atiende ?? "—" : r.estado ?? "—"} />
-          </div>
-          {!cerrado && pausa && (
-            <div style={{ marginTop: 8 }}>
-              <Dato t="En pausa desde" v={formatFechaLarga(r.pausado_at)} />
-            </div>
-          )}
-          {cerrado && (
-            <>
-              <div style={{ marginTop: 8 }}>
-                <Dato t="Solución" v={r.solucion ?? "—"} />
-              </div>
-              <div style={{ marginTop: 8 }}>
-                <Dato t="VoBo" v={r.vobo ?? "—"} />
-              </div>
-            </>
-          )}
-          <Comentarios r={r} />
-          <NotasFolio notas={notas} />
-        </div>
-      )}
-    </div>
-  );
-}
-
 function Activos({ lista, notas }: { lista: Reporte[]; notas: Record<string, Nota[]> }) {
+  const [open, setOpen] = useState<string | null>(null);
   return (
     <div>
-      <p style={titSec}>Folios activos (en pausa primero)</p>
+      <p style={titSec}>Folios activos · en pausa primero</p>
       {lista.length === 0 && <p style={{ color: "var(--text-muted)", fontSize: 13 }}>Sin folios activos.</p>}
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        {lista.map((r) => (
-          <TarjetaFolio key={r.folio} r={r} notas={notas[r.folio] ?? []} cerrado={false} />
-        ))}
+        {lista.map((r) => {
+          const ab = open === r.folio;
+          const pausa = !!r.pausado_at;
+          const est = estadoActivo(r.estado);
+          const ns = notas[r.folio] ?? [];
+          return (
+            <div key={r.folio} style={{ ...card, overflow: "hidden", ...(pausa ? { border: "1px solid #EF9F27" } : {}) }}>
+              <button onClick={() => setOpen(ab ? null : r.folio)} style={headStyle}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 500 }}><span style={{ fontVariantNumeric: "tabular-nums" }}>{r.folio}</span> · {r.ingeniero_asignado ?? "—"}</div>
+                  <div style={label}>{r.cr} - {r.tienda}</div>
+                </div>
+                {pausa && <span style={{ fontSize: 11, color: C.amber, background: C.amberBg, padding: "2px 9px", borderRadius: 20 }}>En pausa</span>}
+                <span style={{ fontSize: 11, color: est.color, background: est.bg, padding: "2px 9px", borderRadius: 20 }}>{est.texto}</span>
+                <Chevron up={ab} />
+              </button>
+              {ab && (
+                <div style={{ borderTop: "0.5px solid var(--border)", padding: "10px 12px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "9px 12px" }}>
+                  <Dato full t="Grupo · Concepto" v={`${r.grupo_servicio ?? "—"} · ${r.concepto_servicio ?? "—"}`} />
+                  {pausa && <Dato t="En pausa desde" v={fechaDe(r.pausado_at)} />}
+                  <Dato full t="Notas internas" v={ns.length === 0 ? "Sin notas." : ns.map((n) => `${n.nombre ?? "—"}: ${n.texto}`).join("  ·  ")} />
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
 }
 
-function Cerrados({ lista, notas }: { lista: Reporte[]; notas: Record<string, Nota[]> }) {
+function DetalleCerrado({ r, notas }: { r: Reporte; notas: Nota[] }) {
+  const coms = (r.comentarios ?? []).filter((c) => c.tipo !== "historia");
+  return (
+    <>
+      <b style={{ fontSize: 16 }}><span style={{ fontVariantNumeric: "tabular-nums" }}>{r.folio}</span> · {r.cr} - {r.tienda}</b>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px 12px", marginTop: 12 }}>
+        <Dato t="Creación" v={fechaDe(r.fecha_creacion)} />
+        <Dato t="Aceptada" v={fechaDe(r.fecha_asignacion)} />
+        <Dato t="Llegada a sitio" v={fechaDe(r.fecha_llegada)} />
+        <Dato t="Cerrada" v={fechaDe(r.fecha_resuelto)} />
+        <Dato full t="Grupo · Concepto" v={`${r.grupo_servicio ?? "—"} · ${r.concepto_servicio ?? "—"}`} />
+        <Dato full t="Solución" v={r.solucion ?? "—"} />
+        <Dato t="VoBo" v={r.vobo ?? "—"} />
+        <Dato t="Atiende" v={r.atiende ?? "—"} />
+      </div>
+      <div style={{ marginTop: 12 }}>
+        <div style={label}>Comentarios de Getic</div>
+        {coms.length === 0 ? <div style={{ fontSize: 13, color: "var(--text-muted)" }}>Sin comentarios.</div> :
+          coms.map((c, i) => <div key={i} style={{ fontSize: 13 }}><b>{c.usuario ?? "—"}:</b> {c.mensaje} <span style={label}>· {c.fecha}</span></div>)}
+      </div>
+      <div style={{ marginTop: 12 }}>
+        <div style={label}>Notas internas</div>
+        {notas.length === 0 ? <div style={{ fontSize: 13, color: "var(--text-muted)" }}>Sin notas internas.</div> :
+          notas.map((n) => <div key={n.id} style={{ fontSize: 13 }}><b>{n.nombre ?? "—"}:</b> {n.texto} <span style={label}>· {formatFechaLarga(n.created_at)}</span></div>)}
+      </div>
+    </>
+  );
+}
+
+function Cerrados({ lista, notas, abrir }: { lista: Reporte[]; notas: Record<string, Nota[]>; abrir: (n: React.ReactNode) => void }) {
+  const [open, setOpen] = useState<string | null>(null);
+  const grupos = new Map<string, Reporte[]>();
+  for (const r of lista) {
+    const k = r.ingeniero_asignado ?? "—";
+    const arr = grupos.get(k) ?? [];
+    arr.push(r);
+    grupos.set(k, arr);
+  }
+  const porIng = [...grupos.entries()];
   return (
     <div>
-      <p style={titSec}>Reportes cerrados (historial)</p>
-      {lista.length === 0 && <p style={{ color: "var(--text-muted)", fontSize: 13 }}>Sin reportes cerrados.</p>}
+      <p style={titSec}>Reportes cerrados · por quién lo cerró (reciente → viejo)</p>
+      {porIng.length === 0 && <p style={{ color: "var(--text-muted)", fontSize: 13 }}>Sin reportes cerrados.</p>}
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        {lista.slice(0, 50).map((r) => (
-          <TarjetaFolio key={r.folio} r={r} notas={notas[r.folio] ?? []} cerrado />
-        ))}
+        {porIng.map(([nombre, folios]) => {
+          const ab = open === nombre;
+          return (
+            <div key={nombre} style={{ ...card, overflow: "hidden" }}>
+              <button onClick={() => setOpen(ab ? null : nombre)} style={headStyle}>
+                <div style={avatarStyle}>{iniciales(nombre)}</div>
+                <div style={{ flex: 1 }}><div style={{ fontSize: 14, fontWeight: 500 }}>{nombre}</div><div style={label}>{folios.length} cerrados</div></div>
+                <Chevron up={ab} />
+              </button>
+              {ab && (
+                <div style={{ borderTop: "0.5px solid var(--border)", padding: "4px 0" }}>
+                  {folios.map((r) => (
+                    <button key={r.folio} onClick={() => abrir(<DetalleCerrado r={r} notas={notas[r.folio] ?? []} />)} style={rowBtn}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 13 }}><span style={{ fontVariantNumeric: "tabular-nums" }}>{r.folio}</span> · {r.cr} - {r.tienda}</div>
+                        <div style={label}>cerrado {fechaDe(r.fecha_resuelto)}</div>
+                      </div>
+                      <Chevron right />
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
 }
 
-function iniciales(nombre: string) {
-  const p = nombre.trim().split(/\s+/).filter(Boolean);
-  if (p.length === 0) return "?";
-  if (p.length === 1) return p[0][0].toUpperCase();
-  return (p[0][0] + p[1][0]).toUpperCase();
+function Modal({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
+  useEffect(() => {
+    const h = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", h);
+    return () => document.removeEventListener("keydown", h);
+  }, [onClose]);
+  return (
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.5)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, zIndex: 100 }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ background: "var(--surface-2)", color: "var(--text-primary)", borderRadius: 12, border: "0.5px solid var(--border)", maxWidth: 460, width: "100%", maxHeight: "85vh", overflowY: "auto", padding: 18 }}>
+        <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: -6 }}>
+          <button onClick={onClose} aria-label="Cerrar" style={{ fontSize: 20, background: "none", border: "none", cursor: "pointer", color: "var(--text-secondary)" }}>×</button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+const headStyle: React.CSSProperties = { width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", background: "none", border: "none", textAlign: "left", cursor: "pointer", color: "var(--text-primary)" };
+const rowBtn: React.CSSProperties = { width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "8px 14px", background: "none", border: "none", textAlign: "left", cursor: "pointer", color: "var(--text-primary)" };
+const avatarStyle: React.CSSProperties = { width: 28, height: 28, borderRadius: "50%", background: "#2C2C2A", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 600 };
+
+function Chevron({ up, right }: { up?: boolean; right?: boolean }) {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+      style={{ flex: "none", transform: right ? "rotate(-90deg)" : up ? "rotate(180deg)" : "none" }}>
+      <path d="M6 9l6 6 6-6" />
+    </svg>
+  );
 }

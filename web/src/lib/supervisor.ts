@@ -46,6 +46,45 @@ function mismoIngeniero(reporteNombre: string | null, perfilNombre: string) {
   return a === b || a.startsWith(b) || b.startsWith(a);
 }
 
+export type DiaHorario = { entrada: string | null; comida: string | null; salida: string | null; descanso: boolean };
+export type HorarioIngeniero = { id: string; nombre: string; dias: Record<string, DiaHorario> };
+
+function isoFecha(d: Date): string {
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
+}
+/** Lunes a domingo de la semana actual (hora del centro), como ISO yyyy-mm-dd. */
+function semanaActual(): string[] {
+  const centro = new Date(Date.now() - 6 * 3600 * 1000);
+  const dow = (centro.getUTCDay() + 6) % 7; // 0 = lunes
+  const lunes = new Date(centro.getTime() - dow * 86400000);
+  return Array.from({ length: 7 }, (_, i) => isoFecha(new Date(lunes.getTime() + i * 86400000)));
+}
+
+/** Horarios de la semana de cada ingeniero (Vallarta) para el panel. */
+export async function datosHorarios(): Promise<{ semana: string[]; ingenieros: HorarioIngeniero[] }> {
+  const admin = createAdminClient();
+  const semana = semanaActual();
+  const [{ data: perfs }, { data: hors }] = await Promise.all([
+    admin.from("perfiles").select("id, nombre, rol"),
+    admin
+      .from("horarios")
+      .select("perfil_id, fecha, entrada, comida, salida, descanso")
+      .gte("fecha", semana[0])
+      .lte("fecha", semana[6]),
+  ]);
+  const horas = (hors ?? []) as (DiaHorario & { perfil_id: string; fecha: string })[];
+  const ingenieros = ((perfs ?? []) as { id: string; nombre: string; rol: string }[])
+    .filter((p) => p.rol === "ingeniero")
+    .map((p) => {
+      const dias: Record<string, DiaHorario> = {};
+      for (const h of horas.filter((x) => x.perfil_id === p.id)) {
+        dias[h.fecha] = { entrada: h.entrada, comida: h.comida, salida: h.salida, descanso: h.descanso };
+      }
+      return { id: p.id, nombre: p.nombre, dias };
+    });
+  return { semana, ingenieros };
+}
+
 /** Rol del usuario logueado (para proteger el panel). */
 export async function rolActual(): Promise<string | null> {
   const supabase = await createClient();

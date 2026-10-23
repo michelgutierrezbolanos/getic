@@ -1,4 +1,5 @@
 import GeticShell from "@/components/GeticShell";
+import SupervisorShell from "@/components/SupervisorShell";
 import PanelSupervisor from "@/components/PanelSupervisor";
 import type { Reporte } from "@/lib/reportes";
 import { sesionActual } from "@/lib/sesion";
@@ -14,11 +15,11 @@ export default async function Home() {
   if ((await rolActual()) === "supervisor") {
     const datos = await datosPanel();
     return (
-      <GeticShell nombre={nombre} puesto="Supervisor">
+      <SupervisorShell nombre={nombre}>
         <main className="jqm-content fade-in">
           <PanelSupervisor datos={datos} />
         </main>
-      </GeticShell>
+      </SupervisorShell>
     );
   }
   const [{ data: reportes }, { data: horario }, { data: vehiculo }] = await Promise.all([
