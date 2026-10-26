@@ -16,9 +16,7 @@ export default async function Home() {
     const datos = await datosPanel();
     return (
       <SupervisorShell nombre={nombre}>
-        <main className="jqm-content fade-in">
-          <PanelSupervisor datos={datos} />
-        </main>
+        <PanelSupervisor datos={datos} />
       </SupervisorShell>
     );
   }

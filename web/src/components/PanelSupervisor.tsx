@@ -1,376 +1,632 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
-import { estadoGetic, formatFechaLarga, type Reporte } from "@/lib/reportes";
-import type { DatosPanel, GasIngeniero, Nota, Solicitud } from "@/lib/supervisor";
+import { estadoGetic, formatFechaLarga, tiempoEnVivo, type Reporte } from "@/lib/reportes";
+import type { DatosPanel, Nota, Solicitud } from "@/lib/supervisor";
 
-// Paleta fija (la app es tema claro; nada de variables CSS inexistentes).
-const COL = {
-  pageText: "#2b2b2b", sec: "#5a6672", muted: "#8a929b",
-  cardBg: "#ffffff", cardBorder: "#e3e6ea", surface: "#f4f6f8",
-  accent: "#1f539f", accentSoft: "#e7f0fb",
-  amber: "#9a6710", amberBg: "#faeecb",
-  green: "#126b4f", greenBg: "#d8efe4",
-  red: "#a82a2a", redBg: "#fbe0e0",
-  slate: "#54616f", slateBg: "#e8ebee",
-  blue: "#1f539f", blueBg: "#e1ebfb",
+type Tab = "activos" | "cerrados" | "gasolina" | "notas";
+type Gas = Solicitud & { ingeniero: string };
+type Detalle = { tipo: "folio"; r: Reporte } | { tipo: "gas"; s: Gas };
+
+const PRIORIDAD: Record<string, { franja: string; fondo: string; color: string }> = {
+  alta: { franja: "#e53935", fondo: "#fcebeb", color: "#a32d2d" },
+  media: { franja: "#f28c28", fondo: "#faeeda", color: "#854f0b" },
+  baja: { franja: "#0f8b8d", fondo: "#e6f4f4", color: "#0b5f60" },
 };
-const card: React.CSSProperties = { background: COL.cardBg, border: `1px solid ${COL.cardBorder}`, borderRadius: 10 };
-const label: React.CSSProperties = { fontSize: 11, color: COL.muted, textShadow: "none" };
-const titSec: React.CSSProperties = { fontSize: 14, fontWeight: 600, color: COL.sec, margin: "0 0 10px", textShadow: "none" };
+const prio = (p: string | null) => PRIORIDAD[(p ?? "").toLowerCase()];
 
-function pillGas(estado: string): { color: string; bg: string; texto: string } {
-  switch (estado) {
-    case "autorizada":
-    case "aprobada": return { color: COL.green, bg: COL.greenBg, texto: "Autorizada" };
-    case "finalizada": return { color: COL.slate, bg: COL.slateBg, texto: "Cargada" };
-    case "rechazada": return { color: COL.red, bg: COL.redBg, texto: "Rechazada" };
-    case "error": return { color: COL.red, bg: COL.redBg, texto: "Error" };
-    default: return { color: COL.amber, bg: COL.amberBg, texto: "Enviada" };
-  }
+const ESTADO: Record<string, { texto: string; fondo: string; color: string }> = {
+  Asignado: { texto: "Asignado", fondo: "#f3f4f6", color: "#374151" },
+  Confirmado: { texto: "Confirmado", fondo: "#e6f4f4", color: "#0b5f60" },
+  LlegadaSitio: { texto: "En sitio", fondo: "#fdf0e3", color: "#9a4a06" },
+  "Sin Asignar": { texto: "Sin asignar", fondo: "#fcebeb", color: "#a32d2d" },
+  Resuelto: { texto: "Cerrado", fondo: "#dcfce7", color: "#166534" },
+};
+
+const GAS: Record<string, { texto: string; fondo: string; color: string }> = {
+  autorizada: { texto: "Autorizada", fondo: "#e6f4f4", color: "#0b5f60" },
+  aprobada: { texto: "Autorizada", fondo: "#e6f4f4", color: "#0b5f60" },
+  finalizada: { texto: "Cargada", fondo: "#f3f4f6", color: "#374151" },
+  rechazada: { texto: "Rechazada", fondo: "#fcebeb", color: "#a32d2d" },
+  error: { texto: "Error", fondo: "#fcebeb", color: "#a32d2d" },
+  enviada: { texto: "Enviada", fondo: "#faeeda", color: "#854f0b" },
+};
+const gasEstado = (e: string) => GAS[e] ?? GAS.enviada;
+
+function Chip({ texto, fondo, color }: { texto: string; fondo: string; color: string }) {
+  return <span className="sv-chip" style={{ background: fondo, color }}>{texto}</span>;
 }
-function Pill({ estado }: { estado: string }) {
-  const p = pillGas(estado);
-  return <span style={{ fontSize: 11, fontWeight: 600, color: p.color, background: p.bg, padding: "2px 9px", borderRadius: 20, whiteSpace: "nowrap", textShadow: "none" }}>{p.texto}</span>;
+const Pausa = () => <Chip texto="⏸ Pausa" fondo="#fdf0e3" color="#9a4a06" />;
+
+function iniciales(n: string) {
+  const p = n.trim().split(/\s+/).filter(Boolean);
+  return ((p[0]?.[0] ?? "?") + (p[1]?.[0] ?? "")).toUpperCase();
 }
-function estadoActivo(estado: string | null): { color: string; bg: string; texto: string } {
-  switch (estadoGetic(estado)) {
-    case "Asignado": return { color: COL.blue, bg: COL.blueBg, texto: "Asignado" };
-    case "Confirmado": return { color: COL.slate, bg: COL.slateBg, texto: "Confirmado" };
-    case "LlegadaSitio": return { color: COL.green, bg: COL.greenBg, texto: "En sitio" };
-    default: return { color: COL.slate, bg: COL.slateBg, texto: "Sin asignar" };
-  }
+/** "Luis Alberto Arias Cuevas" → "Luis Arias" (nombre + primer apellido). */
+const corto = (n: string | null) => {
+  const p = (n ?? "—").trim().split(/\s+/);
+  if (p.length >= 4) return `${p[0]} ${p[2]}`;
+  if (p.length >= 2) return `${p[0]} ${p[1]}`;
+  return p[0];
+};
+const fecha = (v: unknown) => (v ? formatFechaLarga(String(v)) : "—");
+const tienda = (r: Pick<Reporte, "cr" | "tienda">) => [r.cr, r.tienda].filter(Boolean).join(" · ");
+
+/** "22h52m" / "1d 4h", o "Vencido". */
+function tiempoCorto(r: Reporte, ahora: number) {
+  const t = tiempoEnVivo(r, ahora);
+  if (!t) return null;
+  if (t.vencido) return { vencido: true, texto: "Vencido" };
+  const m = t.texto.match(/(?:(\d+)dia\(s\) )?(\d+):(\d{2})/);
+  if (!m) return { vencido: false, texto: t.texto };
+  const [, d, h, min] = m;
+  return { vencido: false, texto: d ? `${d}d ${h}h` : `${h}h${min}m` };
 }
-function Dato({ t, v, full }: { t: string; v: React.ReactNode; full?: boolean }) {
-  return <div style={full ? { gridColumn: "1 / -1" } : undefined}><div style={label}>{t}</div><div style={{ fontSize: 13, color: COL.pageText, textShadow: "none" }}>{v}</div></div>;
+
+function Tiempo({ r, ahora }: { r: Reporte; ahora: number }) {
+  const t = tiempoCorto(r, ahora);
+  if (!t) return <span className="sv-sub">—</span>;
+  return t.vencido ? <Chip texto="Vencido" fondo="#fcebeb" color="#a32d2d" /> : <span style={{ color: "#c2410c", fontWeight: 600 }}>{t.texto}</span>;
 }
-function iniciales(n: string) { const p = n.trim().split(/\s+/).filter(Boolean); return ((p[0]?.[0] ?? "?") + (p[1]?.[0] ?? "")).toUpperCase(); }
-function fechaDe(v: unknown) { return v ? formatFechaLarga(String(v)) : "—"; }
 
 export default function PanelSupervisor({ datos }: { datos: DatosPanel }) {
   const router = useRouter();
-  const [sec, setSec] = useState<string | null>("activos");
-  const [modal, setModal] = useState<React.ReactNode | null>(null);
-  useEffect(() => { const id = setInterval(() => router.refresh(), 25000); return () => clearInterval(id); }, [router]);
+  const [tab, setTab] = useState<Tab>("activos");
+  const [busqueda, setBusqueda] = useState("");
+  const [detalle, setDetalle] = useState<Detalle | null>(null);
+  const [ahora, setAhora] = useState(() => Date.now());
 
-  const tabs = [
-    { id: "notas", label: "Notas internas" },
-    { id: "gas", label: "Solicitudes de gasolina" },
-    { id: "activos", label: "Folios activos" },
-    { id: "cerrados", label: "Reportes cerrados" },
-  ];
+  // Datos frescos cada 25 s; el tiempo restante corre cada 30 s.
+  useEffect(() => {
+    const a = setInterval(() => router.refresh(), 25000);
+    const b = setInterval(() => setAhora(Date.now()), 30000);
+    return () => {
+      clearInterval(a);
+      clearInterval(b);
+    };
+  }, [router]);
+
+  const gasolina: Gas[] = useMemo(
+    () =>
+      datos.gasolina
+        .flatMap((g) => [g.actual, ...g.historial].filter(Boolean).map((s) => ({ ...(s as Solicitud), ingeniero: g.nombre })))
+        .sort((a, b) => b.created_at.localeCompare(a.created_at)),
+    [datos.gasolina],
+  );
+  const porFolio = useMemo(() => new Map([...datos.activos, ...datos.cerrados].map((r) => [r.folio, r])), [datos]);
+  const notasAbiertas = useMemo(
+    () =>
+      Object.entries(datos.notasPorFolio)
+        .filter(([folio]) => datos.activos.some((r) => r.folio === folio))
+        .flatMap(([, ns]) => ns)
+        .sort((a, b) => b.created_at.localeCompare(a.created_at)),
+    [datos],
+  );
+
+  const q = busqueda.trim().toLowerCase();
+  const coincide = (...t: (string | null | undefined)[]) => !q || t.some((x) => (x ?? "").toLowerCase().includes(q));
+  const conteoPrioridad = (p: string) => datos.activos.filter((r) => (r.prioridad ?? "").toLowerCase() === p).length;
+
+  const abrirFolio = (folio: string) => {
+    const r = porFolio.get(folio);
+    if (r) setDetalle({ tipo: "folio", r });
+  };
+
+  const fecha_hoy = new Intl.DateTimeFormat("es-MX", { timeZone: "America/Mexico_City", weekday: "long", day: "numeric", month: "long" }).format(ahora);
 
   return (
-    <div style={{ maxWidth: 1500, margin: "0 auto", padding: "22px 28px", display: "flex", flexDirection: "column", gap: 22, color: COL.pageText }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
-        <b style={{ fontSize: 22, textShadow: "none" }}>Panel de supervisión</b>
-        <button onClick={() => router.refresh()} style={{ fontSize: 13, padding: "7px 14px", borderRadius: 8, border: `1px solid ${COL.cardBorder}`, background: COL.cardBg, color: COL.pageText, cursor: "pointer" }}>Actualizar</button>
+    <>
+      <div className="sv-cabecera">
+        <div style={{ flex: 1 }}>
+          <h1>Panel de supervisión</h1>
+          <p>
+            <span style={{ textTransform: "capitalize" }}>{fecha_hoy}</span> · <span className="sv-vivo">● en vivo</span>
+          </p>
+        </div>
+        <button className="sv-boton" onClick={() => router.refresh()}>
+          ↻ Actualizar
+        </button>
       </div>
 
-      <Resumen r={datos.resumen} />
-      <Ingenieros lista={datos.ingenieros} />
+      <div className="sv-kpis">
+        <div className="sv-kpi">
+          <small>Folios activos</small>
+          <b>{datos.resumen.activos}</b>
+          <div style={{ display: "flex", gap: 5, marginTop: 4 }}>
+            {(["alta", "media", "baja"] as const).map((p) =>
+              conteoPrioridad(p) ? <Chip key={p} texto={`${conteoPrioridad(p)} ${p}`} fondo={PRIORIDAD[p].fondo} color={PRIORIDAD[p].color} /> : null,
+            )}
+          </div>
+        </div>
+        <div className="sv-kpi">
+          <small>En pausa</small>
+          <b style={{ color: "#c2410c" }}>{datos.resumen.pausa}</b>
+        </div>
+        <div className="sv-kpi">
+          <small>Vencidos</small>
+          <b style={{ color: "#a32d2d" }}>{datos.resumen.vencidos}</b>
+        </div>
+        <div className="sv-kpi oscuro">
+          <small>Gasolina pendiente</small>
+          <b>{datos.resumen.gasPendiente}</b>
+        </div>
+      </div>
 
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
-        {tabs.map((t) => {
-          const on = sec === t.id;
+      <div className="sv-ings">
+        {datos.ingenieros.map((p) => {
+          const total = Math.max(1, p.tomados + p.confirmados + p.enSitio);
           return (
-            <button key={t.id} onClick={() => setSec(on ? null : t.id)}
-              style={{ fontSize: 14, fontWeight: 600, padding: "11px 18px", borderRadius: 10, cursor: "pointer", textShadow: "none",
-                background: on ? COL.accent : COL.surface, color: on ? "#ffffff" : COL.pageText,
-                border: `1px solid ${on ? COL.accent : COL.cardBorder}`,
-                boxShadow: on ? "0 1px 3px rgba(31,83,159,.35)" : "none" }}>
-              {t.label}
-            </button>
+            <div key={p.id} className="sv-ing">
+              <div className="sv-ing-top">
+                <div className="sv-avatar">{iniciales(p.nombre)}</div>
+                <b>{p.nombre}</b>
+                <span>{p.activos} activos</span>
+              </div>
+              <div className="sv-barra" title={`Asignados ${p.tomados} · Confirmados ${p.confirmados} · En sitio ${p.enSitio}`}>
+                <div style={{ width: `${(p.tomados / total) * 100}%`, background: "#9ca3af" }} />
+                <div style={{ width: `${(p.confirmados / total) * 100}%`, background: "#0f8b8d" }} />
+                <div style={{ width: `${(p.enSitio / total) * 100}%`, background: "#f28c28" }} />
+              </div>
+              <div className="sv-leyenda">
+                <span><i style={{ background: "#9ca3af" }} />{p.tomados} asignados</span>
+                <span><i style={{ background: "#0f8b8d" }} />{p.confirmados} conf.</span>
+                <span><i style={{ background: "#f28c28" }} />{p.enSitio} en sitio</span>
+              </div>
+            </div>
           );
         })}
       </div>
 
-      {sec === "notas" && <Notas datos={datos} />}
-      {sec === "gas" && <Gasolina lista={datos.gasolina} abrir={setModal} />}
-      {sec === "activos" && <Activos lista={datos.activos} notas={datos.notasPorFolio} />}
-      {sec === "cerrados" && <Cerrados lista={datos.cerrados} notas={datos.notasPorFolio} abrir={setModal} />}
+      <div className="sv-cuerpo">
+        <div className="sv-tarjeta">
+          <div className="sv-tabs">
+            {(
+              [
+                ["activos", `Activos · ${datos.activos.length}`],
+                ["cerrados", "Cerrados"],
+                ["gasolina", "Gasolina"],
+                ["notas", "Notas"],
+              ] as [Tab, string][]
+            ).map(([id, txt]) => (
+              <button key={id} className={`sv-tab ${tab === id ? "activo" : ""}`} onClick={() => setTab(id)}>
+                {txt}
+              </button>
+            ))}
+            <input className="sv-buscar" placeholder="Buscar folio, tienda, CR, ingeniero…" value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
+          </div>
 
-      {modal && <Modal onClose={() => setModal(null)}>{modal}</Modal>}
-    </div>
+          {tab === "activos" && (
+            <TablaFolios
+              filas={datos.activos.filter((r) => coincide(r.folio, r.cr, r.tienda, r.ingeniero_asignado))}
+              ahora={ahora}
+              onAbrir={(r) => setDetalle({ tipo: "folio", r })}
+            />
+          )}
+          {tab === "cerrados" && (
+            <TablaCerrados
+              filas={datos.cerrados.filter((r) => coincide(r.folio, r.cr, r.tienda, r.ingeniero_asignado, r.solucion))}
+              onAbrir={(r) => setDetalle({ tipo: "folio", r })}
+            />
+          )}
+          {tab === "gasolina" && (
+            <TablaGas filas={gasolina.filter((s) => coincide(s.ingeniero, String(s.datos?.monto ?? ""), s.estado))} onAbrir={(s) => setDetalle({ tipo: "gas", s })} />
+          )}
+          {tab === "notas" && (
+            <ListaNotas
+              notas={notasAbiertas.filter((n) => coincide(n.folio, n.nombre, n.texto, porFolio.get(n.folio)?.tienda))}
+              porFolio={porFolio}
+              onAbrir={abrirFolio}
+            />
+          )}
+        </div>
+
+        <Actividad datos={datos} gasolina={gasolina} porFolio={porFolio} onFolio={abrirFolio} onGas={(s) => setDetalle({ tipo: "gas", s })} />
+      </div>
+
+      {detalle && (
+        <Cajon onClose={() => setDetalle(null)}>
+          {detalle.tipo === "folio" ? (
+            <DetalleFolio r={detalle.r} notas={datos.notasPorFolio[detalle.r.folio] ?? []} ahora={ahora} />
+          ) : (
+            <DetalleGas s={detalle.s} />
+          )}
+        </Cajon>
+      )}
+    </>
   );
 }
 
-function Resumen({ r }: { r: DatosPanel["resumen"] }) {
-  const tile = (t: string, v: number, color?: string) => (
-    <div style={{ ...card, padding: 16 }}>
-      <div style={{ fontSize: 13, color: COL.sec, textShadow: "none" }}>{t}</div>
-      <div style={{ fontSize: 30, fontWeight: 700, color: color ?? COL.pageText, textShadow: "none" }}>{v}</div>
-    </div>
-  );
+function TablaFolios({ filas, ahora, onAbrir }: { filas: Reporte[]; ahora: number; onAbrir: (r: Reporte) => void }) {
+  if (!filas.length) return <div className="sv-vacio">Sin folios activos.</div>;
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 14 }}>
-      {tile("Folios activos", r.activos)}
-      {tile("En pausa", r.pausa, COL.amber)}
-      {tile("Vencidos", r.vencidos, COL.red)}
-      {tile("Gasolina pendiente", r.gasPendiente)}
-    </div>
+    <table className="sv-tabla">
+      <thead>
+        <tr>
+          <th>Folio</th>
+          <th>Tienda</th>
+          <th>Ingeniero</th>
+          <th>Estado</th>
+          <th>Tiempo</th>
+        </tr>
+      </thead>
+      <tbody>
+        {filas.map((r) => {
+          const e = ESTADO[estadoGetic(r.estado)];
+          return (
+            <tr key={r.folio} onClick={() => onAbrir(r)}>
+              <td style={{ borderLeftColor: prio(r.prioridad)?.franja }}>
+                <span className="sv-folio">{r.folio}</span>
+                <span className="sv-sub">{r.prioridad ?? ""}</span>
+              </td>
+              <td>
+                {tienda(r)} {r.pausado_at && <Pausa />}
+                <span className="sv-sub">{[r.grupo_servicio, r.concepto_servicio].filter(Boolean).join(" · ")}</span>
+              </td>
+              <td>{corto(r.ingeniero_asignado)}</td>
+              <td>{e && <Chip {...e} />}</td>
+              <td>
+                <Tiempo r={r} ahora={ahora} />
+              </td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
   );
 }
 
-function Ingenieros({ lista }: { lista: DatosPanel["ingenieros"] }) {
-  const chip = (c: string, bg: string, t: string) => <span style={{ fontSize: 11, fontWeight: 600, color: c, background: bg, padding: "2px 9px", borderRadius: 20, textShadow: "none" }}>{t}</span>;
+function TablaCerrados({ filas, onAbrir }: { filas: Reporte[]; onAbrir: (r: Reporte) => void }) {
+  if (!filas.length) return <div className="sv-vacio">Sin reportes cerrados.</div>;
   return (
-    <div>
-      <p style={titSec}>Avance por ingeniero</p>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 14 }}>
-        {lista.length === 0 && <p style={{ color: COL.muted, fontSize: 13 }}>Sin ingenieros registrados.</p>}
-        {lista.map((p) => (
-          <div key={p.id} style={{ ...card, padding: "12px 14px" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-              <div style={avatarStyle}>{iniciales(p.nombre)}</div>
-              <b style={{ fontSize: 15, flex: 1, textShadow: "none" }}>{p.nombre}</b>
-              <span style={{ fontSize: 12, color: COL.sec, textShadow: "none" }}>{p.activos} activos</span>
-            </div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-              {chip(COL.blue, COL.blueBg, `Tomados ${p.tomados}`)}
-              {chip(COL.slate, COL.slateBg, `Confirmados ${p.confirmados}`)}
-              {chip(COL.green, COL.greenBg, `En sitio ${p.enSitio}`)}
-            </div>
+    <table className="sv-tabla">
+      <thead>
+        <tr>
+          <th>Folio</th>
+          <th>Tienda</th>
+          <th>Cerró</th>
+          <th>Cerrado</th>
+          <th>Solución</th>
+        </tr>
+      </thead>
+      <tbody>
+        {filas.slice(0, 150).map((r) => (
+          <tr key={r.folio} onClick={() => onAbrir(r)}>
+            <td style={{ borderLeftColor: "#166534" }}>
+              <span className="sv-folio">{r.folio}</span>
+            </td>
+            <td>{tienda(r)}</td>
+            <td>{corto(r.ingeniero_asignado)}</td>
+            <td style={{ whiteSpace: "nowrap" }}>{fecha(r.fecha_resuelto)}</td>
+            <td style={{ maxWidth: 260, color: "#6b7280" }}>
+              <span style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{r.solucion ?? "—"}</span>
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+function TablaGas({ filas, onAbrir }: { filas: Gas[]; onAbrir: (s: Gas) => void }) {
+  if (!filas.length) return <div className="sv-vacio">Sin solicitudes de gasolina.</div>;
+  return (
+    <table className="sv-tabla">
+      <thead>
+        <tr>
+          <th>Ingeniero</th>
+          <th>Monto</th>
+          <th>Autorizado</th>
+          <th>Fecha</th>
+          <th>Estado</th>
+        </tr>
+      </thead>
+      <tbody>
+        {filas.map((s) => {
+          const d = (s.datos ?? {}) as Record<string, unknown>;
+          return (
+            <tr key={s.id} onClick={() => onAbrir(s)}>
+              <td style={{ borderLeftColor: gasEstado(s.estado).color }}>{s.ingeniero}</td>
+              <td className="sv-folio">{d.monto != null ? `$${d.monto}` : "—"}</td>
+              <td>{d.monto_autorizado != null ? `$${d.monto_autorizado}` : "—"}</td>
+              <td style={{ whiteSpace: "nowrap" }}>{fecha(s.created_at)}</td>
+              <td>
+                <Chip {...gasEstado(s.estado)} />
+              </td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
+  );
+}
+
+function ListaNotas({ notas, porFolio, onAbrir }: { notas: Nota[]; porFolio: Map<string, Reporte>; onAbrir: (folio: string) => void }) {
+  if (!notas.length) return <div className="sv-vacio">Sin notas en folios abiertos.</div>;
+  return (
+    <table className="sv-tabla">
+      <thead>
+        <tr>
+          <th>Folio</th>
+          <th>Nota</th>
+          <th>Autor</th>
+          <th>Fecha</th>
+        </tr>
+      </thead>
+      <tbody>
+        {notas.map((n) => {
+          const r = porFolio.get(n.folio);
+          return (
+            <tr key={n.id} onClick={() => onAbrir(n.folio)}>
+              <td style={{ borderLeftColor: "#0f8b8d" }}>
+                <span className="sv-folio">{n.folio}</span>
+                <span className="sv-sub">{r ? tienda(r) : ""}</span>
+              </td>
+              <td>{n.texto}</td>
+              <td>{n.nombre ?? "—"}</td>
+              <td style={{ whiteSpace: "nowrap" }}>{fecha(n.created_at)}</td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
+  );
+}
+
+/** Lo más reciente de todo: gasolina, notas, cierres y pausas. */
+function Actividad({
+  datos,
+  gasolina,
+  porFolio,
+  onFolio,
+  onGas,
+}: {
+  datos: DatosPanel;
+  gasolina: Gas[];
+  porFolio: Map<string, Reporte>;
+  onFolio: (folio: string) => void;
+  onGas: (s: Gas) => void;
+}) {
+  type Item = { cuando: string; chip: [string, string, string]; texto: string; sub: string; abrir: () => void };
+  const items: Item[] = [
+    ...gasolina.slice(0, 10).map((s) => ({
+      cuando: s.created_at,
+      chip: ["Gasolina", "#faeeda", "#854f0b"] as [string, string, string],
+      texto: `${s.ingeniero} · $${(s.datos as Record<string, unknown>)?.monto ?? "—"} · ${gasEstado(s.estado).texto}`,
+      sub: "",
+      abrir: () => onGas(s),
+    })),
+    ...datos.notasRecientes.map((n) => ({
+      cuando: n.created_at,
+      chip: ["Nota", "#e6f4f4", "#0b5f60"] as [string, string, string],
+      texto: `${n.nombre ?? "—"}: ${n.texto}`,
+      sub: porFolio.get(n.folio)?.cr ?? n.folio,
+      abrir: () => onFolio(n.folio),
+    })),
+    ...datos.cerrados.slice(0, 10).map((r) => ({
+      cuando: r.fecha_resuelto ?? r.updated_at,
+      chip: ["Cerrado", "#dcfce7", "#166534"] as [string, string, string],
+      texto: `${r.folio} · ${r.tienda ?? ""}`,
+      sub: corto(r.ingeniero_asignado),
+      abrir: () => onFolio(r.folio),
+    })),
+    ...datos.activos
+      .filter((r) => r.pausado_at)
+      .map((r) => ({
+        cuando: r.pausado_at!,
+        chip: ["Pausa", "#fdf0e3", "#9a4a06"] as [string, string, string],
+        texto: tienda(r),
+        sub: corto(r.ingeniero_asignado),
+        abrir: () => onFolio(r.folio),
+      })),
+  ]
+    .filter((i) => i.cuando)
+    .sort((a, b) => b.cuando.localeCompare(a.cuando))
+    .slice(0, 12);
+
+  return (
+    <aside className="sv-feed">
+      <h2>Actividad reciente</h2>
+      {items.length === 0 && <p style={{ fontSize: 13, color: "#6b7280", margin: 0 }}>Sin actividad.</p>}
+      {items.map((i, k) => (
+        <div key={k} className="sv-feed-item" onClick={i.abrir}>
+          <Chip texto={i.chip[0]} fondo={i.chip[1]} color={i.chip[2]} />
+          <p>{i.texto}</p>
+          <small>{[i.sub, hace(i.cuando)].filter(Boolean).join(" · ")}</small>
+        </div>
+      ))}
+    </aside>
+  );
+}
+
+function hace(iso: string) {
+  const min = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
+  if (Number.isNaN(min)) return "";
+  if (min < 1) return "ahora";
+  if (min < 60) return `hace ${min} min`;
+  const h = Math.round(min / 60);
+  if (h < 24) return `hace ${h} h`;
+  return `hace ${Math.round(h / 24)} d`;
+}
+
+const PASOS: [string, keyof Reporte][] = [
+  ["Asignado", "fecha_asignacion"],
+  ["Confirmado", "fecha_confirmacion"],
+  ["En sitio", "fecha_llegada"],
+  ["Cerrado", "fecha_resuelto"],
+];
+const ORDEN = ["Asignado", "Confirmado", "LlegadaSitio", "Resuelto"];
+
+function DetalleFolio({ r, notas, ahora }: { r: Reporte; notas: Nota[]; ahora: number }) {
+  const actual = ORDEN.indexOf(estadoGetic(r.estado));
+  const coms = (r.comentarios ?? []).filter((c) => c.tipo !== "historia");
+  const p = prio(r.prioridad);
+  const hora = (v: unknown) => {
+    const f = fecha(v);
+    return f === "—" ? "" : f.slice(11);
+  };
+  return (
+    <>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <span style={{ fontSize: 20, fontWeight: 650, flex: 1 }} className="sv-folio">
+          {r.folio}
+        </span>
+        {r.pausado_at && <Pausa />}
+        {p && <Chip texto={r.prioridad!} fondo={p.fondo} color={p.color} />}
+      </div>
+      <div style={{ fontSize: 14, color: "#6b7280", marginTop: 3 }}>
+        {tienda(r)} · {r.ingeniero_asignado ?? "—"}
+      </div>
+
+      <div style={{ display: "flex", gap: 4, marginTop: 16 }}>
+        {PASOS.map((_, i) => (
+          <span key={i} style={{ height: 5, flex: 1, borderRadius: 3, background: i <= actual ? "#f28c28" : "#e5e7eb" }} />
+        ))}
+      </div>
+      <div style={{ display: "flex", marginTop: 5 }}>
+        {PASOS.map(([t, campo], i) => (
+          <div key={t} style={{ flex: 1, fontSize: 11.5, color: i === actual ? "#f28c28" : "#9ca3af", fontWeight: i === actual ? 600 : 400 }}>
+            {t}
+            <div style={{ color: "#6b7280", fontWeight: 400 }}>{hora(r[campo])}</div>
           </div>
         ))}
       </div>
-    </div>
-  );
-}
 
-function Notas({ datos }: { datos: DatosPanel }) {
-  const activoPorFolio = new Map(datos.activos.map((r) => [r.folio, r]));
-  const items: { folio: string; cr: string | null; tienda: string | null; n: Nota }[] = [];
-  for (const [folio, notas] of Object.entries(datos.notasPorFolio)) {
-    const r = activoPorFolio.get(folio);
-    if (!r) continue; // solo folios abiertos
-    for (const n of notas) items.push({ folio, cr: r.cr, tienda: r.tienda, n });
-  }
-  items.sort((a, b) => b.n.created_at.localeCompare(a.n.created_at));
-  return (
-    <div>
-      <p style={titSec}>Notas internas · solo de folios abiertos</p>
-      {items.length === 0 && <p style={{ color: COL.muted, fontSize: 13 }}>Sin notas en folios abiertos.</p>}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))", gap: 10 }}>
-        {items.map(({ folio, cr, tienda, n }) => (
-          <div key={n.id} style={{ ...card, padding: "11px 14px" }}>
-            <div style={{ fontSize: 13, color: COL.pageText, textShadow: "none" }}><span style={{ fontVariantNumeric: "tabular-nums", fontWeight: 600 }}>{folio}</span> · {cr} - {tienda}</div>
-            <div style={{ fontSize: 13, color: COL.pageText, margin: "4px 0", textShadow: "none" }}>{n.texto}</div>
-            <div style={label}><b>{n.nombre ?? "—"}</b> · {formatFechaLarga(n.created_at)}</div>
-          </div>
-        ))}
+      <h3>Datos</h3>
+      <div className="sv-datos">
+        <div>
+          <small>Grupo · concepto</small>
+          <span>{[r.grupo_servicio, r.concepto_servicio].filter(Boolean).join(" · ") || "—"}</span>
+        </div>
+        <div>
+          <small>Tiempo</small>
+          <span>{estadoGetic(r.estado) === "Resuelto" ? "—" : <Tiempo r={r} ahora={ahora} />}</span>
+        </div>
+        <div>
+          <small>Creación</small>
+          <span>{fecha(r.fecha_creacion)}</span>
+        </div>
+        <div>
+          <small>Pausa desde</small>
+          <span>{r.pausado_at ? fecha(r.pausado_at) : "—"}</span>
+        </div>
       </div>
-    </div>
+
+      {(r.solucion || r.vobo || r.atiende) && (
+        <>
+          <h3>Cierre</h3>
+          <div className="sv-datos">
+            <div style={{ gridColumn: "1 / -1" }}>
+              <small>Solución</small>
+              <span>{r.solucion ?? "—"}</span>
+            </div>
+            <div>
+              <small>VoBo</small>
+              <span>{r.vobo ?? "—"}</span>
+            </div>
+            <div>
+              <small>Atiende</small>
+              <span>{r.atiende ?? "—"}</span>
+            </div>
+          </div>
+        </>
+      )}
+
+      <h3>Notas internas</h3>
+      {notas.length === 0 ? (
+        <p style={{ fontSize: 13.5, color: "#6b7280", margin: 0 }}>Sin notas.</p>
+      ) : (
+        notas.map((n) => (
+          <div key={n.id} className="sv-nota">
+            <b style={{ fontWeight: 600 }}>{n.nombre ?? "—"}:</b> {n.texto}
+            <small>{fecha(n.created_at)}</small>
+          </div>
+        ))
+      )}
+
+      {coms.length > 0 && (
+        <>
+          <h3>Comentarios de Getic</h3>
+          {coms.map((c, i) => (
+            <div key={i} className="sv-nota">
+              <b style={{ fontWeight: 600 }}>{c.usuario ?? "—"}:</b> {c.mensaje}
+              <small>{c.fecha}</small>
+            </div>
+          ))}
+        </>
+      )}
+    </>
   );
 }
 
-function DetalleGas({ s }: { s: Solicitud }) {
+function DetalleGas({ s }: { s: Gas }) {
   const d = (s.datos ?? {}) as Record<string, unknown>;
   const rechazada = s.estado === "rechazada";
   return (
     <>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-        <b style={{ fontSize: 17, color: COL.pageText, textShadow: "none" }}>Solicitud de gasolina</b>
-        <Pill estado={s.estado} />
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <span style={{ fontSize: 20, fontWeight: 650, flex: 1 }}>Gasolina</span>
+        <Chip {...gasEstado(s.estado)} />
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px 16px" }}>
-        <Dato t="Monto solicitado" v={d.monto != null ? `$${d.monto}` : "—"} />
-        <Dato t="Monto autorizado" v={d.monto_autorizado != null ? `$${d.monto_autorizado}` : "—"} />
-        <Dato t="Kilometraje" v={d.kilometraje != null ? String(d.kilometraje) : "—"} />
-        <Dato t="Folio foráneo" v={d.foraneo === true ? "Sí" : "No"} />
-        <Dato full t={rechazada ? "Motivo de rechazo" : "Mensaje de autorización"} v={d.motivo_getic != null ? String(d.motivo_getic) : "—"} />
-        <Dato t="Fecha de solicitud" v={fechaDe(s.created_at)} />
-        <Dato t="Evidencia enviada" v={fechaDe(d.evidencia_at)} />
-      </div>
-    </>
-  );
-}
-
-function Gasolina({ lista, abrir }: { lista: GasIngeniero[]; abrir: (n: React.ReactNode) => void }) {
-  const [open, setOpen] = useState<string | null>(null);
-  const con = lista.filter((g) => g.actual || g.historial.length);
-  return (
-    <div>
-      <p style={titSec}>Solicitudes de gasolina · por ingeniero</p>
-      {con.length === 0 && <p style={{ color: COL.muted, fontSize: 13 }}>Sin solicitudes.</p>}
-      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        {con.map((g) => {
-          const todas = [g.actual, ...g.historial].filter(Boolean) as Solicitud[];
-          const ab = open === g.id;
-          return (
-            <div key={g.id} style={{ ...card, overflow: "hidden" }}>
-              <button onClick={() => setOpen(ab ? null : g.id)} style={headStyle}>
-                <div style={avatarStyle}>{iniciales(g.nombre)}</div>
-                <div style={{ flex: 1 }}><div style={{ fontSize: 15, fontWeight: 600, textShadow: "none" }}>{g.nombre}</div><div style={label}>{todas.length} solicitudes</div></div>
-                <Chevron up={ab} />
-              </button>
-              {ab && (
-                <div style={{ borderTop: `1px solid ${COL.cardBorder}`, padding: "4px 0", background: COL.surface }}>
-                  {todas.map((s) => {
-                    const d = (s.datos ?? {}) as Record<string, unknown>;
-                    return (
-                      <button key={s.id} onClick={() => abrir(<DetalleGas s={s} />)} style={rowBtn}>
-                        <span style={{ flex: 1, fontVariantNumeric: "tabular-nums", textShadow: "none" }}>${`${d.monto ?? "—"}`} · {fechaDe(s.created_at)}</span>
-                        <Pill estado={s.estado} />
-                        <Chevron right />
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-function Activos({ lista, notas }: { lista: Reporte[]; notas: Record<string, Nota[]> }) {
-  const [open, setOpen] = useState<string | null>(null);
-  return (
-    <div>
-      <p style={titSec}>Folios activos · en pausa primero</p>
-      {lista.length === 0 && <p style={{ color: COL.muted, fontSize: 13 }}>Sin folios activos.</p>}
-      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        {lista.map((r) => {
-          const ab = open === r.folio;
-          const pausa = !!r.pausado_at;
-          const est = estadoActivo(r.estado);
-          const ns = notas[r.folio] ?? [];
-          return (
-            <div key={r.folio} style={{ ...card, overflow: "hidden", ...(pausa ? { border: "1px solid #EF9F27" } : {}) }}>
-              <button onClick={() => setOpen(ab ? null : r.folio)} style={headStyle}>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 14, fontWeight: 600, textShadow: "none" }}><span style={{ fontVariantNumeric: "tabular-nums" }}>{r.folio}</span> · {r.ingeniero_asignado ?? "—"}</div>
-                  <div style={label}>{r.cr} - {r.tienda}</div>
-                </div>
-                {pausa && <span style={{ fontSize: 11, fontWeight: 600, color: COL.amber, background: COL.amberBg, padding: "2px 9px", borderRadius: 20, textShadow: "none" }}>En pausa</span>}
-                <span style={{ fontSize: 11, fontWeight: 600, color: est.color, background: est.bg, padding: "2px 9px", borderRadius: 20, textShadow: "none" }}>{est.texto}</span>
-                <Chevron up={ab} />
-              </button>
-              {ab && (
-                <div style={{ borderTop: `1px solid ${COL.cardBorder}`, padding: "12px 14px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px 16px", background: COL.surface }}>
-                  <Dato full t="Grupo · Concepto" v={`${r.grupo_servicio ?? "—"} · ${r.concepto_servicio ?? "—"}`} />
-                  {pausa && <Dato t="En pausa desde" v={fechaDe(r.pausado_at)} />}
-                  <Dato full t="Notas internas" v={ns.length === 0 ? "Sin notas." : ns.map((n) => `${n.nombre ?? "—"}: ${n.texto}`).join("  ·  ")} />
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-function DetalleCerrado({ r, notas }: { r: Reporte; notas: Nota[] }) {
-  const coms = (r.comentarios ?? []).filter((c) => c.tipo !== "historia");
-  return (
-    <>
-      <b style={{ fontSize: 17, color: COL.pageText, textShadow: "none" }}><span style={{ fontVariantNumeric: "tabular-nums" }}>{r.folio}</span> · {r.cr} - {r.tienda}</b>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px 16px", marginTop: 14 }}>
-        <Dato t="Creación" v={fechaDe(r.fecha_creacion)} />
-        <Dato t="Aceptada" v={fechaDe(r.fecha_asignacion)} />
-        <Dato t="Llegada a sitio" v={fechaDe(r.fecha_llegada)} />
-        <Dato t="Cerrada" v={fechaDe(r.fecha_resuelto)} />
-        <Dato full t="Grupo · Concepto" v={`${r.grupo_servicio ?? "—"} · ${r.concepto_servicio ?? "—"}`} />
-        <Dato full t="Solución" v={r.solucion ?? "—"} />
-        <Dato t="VoBo" v={r.vobo ?? "—"} />
-        <Dato t="Atiende" v={r.atiende ?? "—"} />
-      </div>
-      <div style={{ marginTop: 14 }}>
-        <div style={label}>Comentarios de Getic</div>
-        {coms.length === 0 ? <div style={{ fontSize: 13, color: COL.muted }}>Sin comentarios.</div> :
-          coms.map((c, i) => <div key={i} style={{ fontSize: 13, color: COL.pageText, textShadow: "none" }}><b>{c.usuario ?? "—"}:</b> {c.mensaje} <span style={label}>· {c.fecha}</span></div>)}
-      </div>
-      <div style={{ marginTop: 14 }}>
-        <div style={label}>Notas internas</div>
-        {notas.length === 0 ? <div style={{ fontSize: 13, color: COL.muted }}>Sin notas internas.</div> :
-          notas.map((n) => <div key={n.id} style={{ fontSize: 13, color: COL.pageText, textShadow: "none" }}><b>{n.nombre ?? "—"}:</b> {n.texto} <span style={label}>· {formatFechaLarga(n.created_at)}</span></div>)}
+      <div style={{ fontSize: 14, color: "#6b7280", marginTop: 3 }}>{s.ingeniero}</div>
+      <h3>Detalle</h3>
+      <div className="sv-datos">
+        <div>
+          <small>Monto solicitado</small>
+          <span>{d.monto != null ? `$${d.monto}` : "—"}</span>
+        </div>
+        <div>
+          <small>Monto autorizado</small>
+          <span>{d.monto_autorizado != null ? `$${d.monto_autorizado}` : "—"}</span>
+        </div>
+        <div>
+          <small>Kilometraje</small>
+          <span>{d.kilometraje != null ? String(d.kilometraje) : "—"}</span>
+        </div>
+        <div>
+          <small>Folio foráneo</small>
+          <span>{d.foraneo === true ? "Sí" : "No"}</span>
+        </div>
+        <div style={{ gridColumn: "1 / -1" }}>
+          <small>{rechazada ? "Motivo de rechazo" : "Mensaje de autorización"}</small>
+          <span>{d.motivo_getic != null ? String(d.motivo_getic) : "—"}</span>
+        </div>
+        <div>
+          <small>Fecha de solicitud</small>
+          <span>{fecha(s.created_at)}</span>
+        </div>
+        <div>
+          <small>Evidencia enviada</small>
+          <span>{fecha(d.evidencia_at)}</span>
+        </div>
       </div>
     </>
   );
 }
 
-function Cerrados({ lista, notas, abrir }: { lista: Reporte[]; notas: Record<string, Nota[]>; abrir: (n: React.ReactNode) => void }) {
-  const [open, setOpen] = useState<string | null>(null);
-  const grupos = new Map<string, Reporte[]>();
-  for (const r of lista) {
-    const k = r.ingeniero_asignado ?? "—";
-    const arr = grupos.get(k) ?? [];
-    arr.push(r);
-    grupos.set(k, arr);
-  }
-  const porIng = [...grupos.entries()];
-  return (
-    <div>
-      <p style={titSec}>Reportes cerrados · por quién lo cerró (reciente → viejo)</p>
-      {porIng.length === 0 && <p style={{ color: COL.muted, fontSize: 13 }}>Sin reportes cerrados.</p>}
-      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        {porIng.map(([nombre, folios]) => {
-          const ab = open === nombre;
-          return (
-            <div key={nombre} style={{ ...card, overflow: "hidden" }}>
-              <button onClick={() => setOpen(ab ? null : nombre)} style={headStyle}>
-                <div style={avatarStyle}>{iniciales(nombre)}</div>
-                <div style={{ flex: 1 }}><div style={{ fontSize: 15, fontWeight: 600, textShadow: "none" }}>{nombre}</div><div style={label}>{folios.length} cerrados</div></div>
-                <Chevron up={ab} />
-              </button>
-              {ab && (
-                <div style={{ borderTop: `1px solid ${COL.cardBorder}`, padding: "4px 0", background: COL.surface }}>
-                  {folios.map((r) => (
-                    <button key={r.folio} onClick={() => abrir(<DetalleCerrado r={r} notas={notas[r.folio] ?? []} />)} style={rowBtn}>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 13, color: COL.pageText, textShadow: "none" }}><span style={{ fontVariantNumeric: "tabular-nums", fontWeight: 600 }}>{r.folio}</span> · {r.cr} - {r.tienda}</div>
-                        <div style={label}>cerrado {fechaDe(r.fecha_resuelto)}</div>
-                      </div>
-                      <Chevron right />
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-function Modal({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
+/** Panel deslizable a la derecha (portal a body para quedar sobre todo). */
+function Cajon({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
   useEffect(() => {
-    const h = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    const h = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
     document.addEventListener("keydown", h);
     return () => document.removeEventListener("keydown", h);
   }, [onClose]);
   if (typeof document === "undefined") return null;
-  // Portal a <body>: así el modal escapa del transform del panel lateral
-  // y queda SIEMPRE centrado en la pantalla visible, no a media página.
   return createPortal(
-    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.5)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, zIndex: 1000 }}>
-      <div onClick={(e) => e.stopPropagation()} style={{ background: COL.cardBg, color: COL.pageText, borderRadius: 12, border: `1px solid ${COL.cardBorder}`, maxWidth: 520, width: "100%", maxHeight: "85vh", overflowY: "auto", padding: 22, boxShadow: "0 12px 40px rgba(0,0,0,.25)" }}>
-        <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: -8 }}>
-          <button onClick={onClose} aria-label="Cerrar" style={{ fontSize: 22, lineHeight: 1, background: "none", border: "none", cursor: "pointer", color: COL.sec, textShadow: "none" }}>×</button>
+    <>
+      <div className="sv-velo" onClick={onClose} />
+      <div className="sv-cajon" role="dialog" aria-modal="true">
+        <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: -6 }}>
+          <button onClick={onClose} aria-label="Cerrar" style={{ border: "none", background: "none", fontSize: 24, color: "#6b7280", cursor: "pointer", lineHeight: 1 }}>
+            ×
+          </button>
         </div>
         {children}
       </div>
-    </div>,
+    </>,
     document.body,
-  );
-}
-
-const headStyle: React.CSSProperties = { width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", background: COL.cardBg, border: "none", textAlign: "left", cursor: "pointer", color: COL.pageText };
-const rowBtn: React.CSSProperties = { width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "9px 16px", background: "none", border: "none", textAlign: "left", cursor: "pointer", color: COL.pageText };
-const avatarStyle: React.CSSProperties = { width: 30, height: 30, borderRadius: "50%", background: "#2C2C2A", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 600, flex: "none", textShadow: "none" };
-
-function Chevron({ up, right }: { up?: boolean; right?: boolean }) {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={COL.muted} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-      style={{ flex: "none", transform: right ? "rotate(-90deg)" : up ? "rotate(180deg)" : "none" }}>
-      <path d="M6 9l6 6 6-6" />
-    </svg>
   );
 }

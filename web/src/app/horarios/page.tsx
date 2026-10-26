@@ -12,9 +12,7 @@ export default async function HorariosPage() {
   const datos = await datosHorarios();
   return (
     <SupervisorShell nombre={nombre}>
-      <main className="jqm-content fade-in">
-        <HorariosSupervisor semana={datos.semana} ingenieros={datos.ingenieros} />
-      </main>
+      <HorariosSupervisor semana={datos.semana} ingenieros={datos.ingenieros} />
     </SupervisorShell>
   );
 }
