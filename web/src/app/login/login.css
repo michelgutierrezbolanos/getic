@@ -1,0 +1,68 @@
+/* Login estilo "Malecón" (igual que la app móvil). */
+.lg {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: minmax(360px, 46%) 1fr;
+  background: #fff;
+  color: #1f2937;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  text-shadow: none;
+}
+.lg * { text-shadow: none; box-sizing: border-box; }
+
+/* Panel oscuro con el atardecer */
+.lg-lado { position: relative; overflow: hidden; background: #111827; color: #fff; padding: 48px 56px; }
+.lg-marca { display: flex; align-items: center; gap: 14px; }
+.lg-g {
+  width: 52px; height: 52px; border-radius: 15px; display: grid; place-items: center;
+  font-size: 28px; font-weight: 700; background: #fff; color: #111827;
+}
+.lg-marca b { display: block; font-size: 24px; line-height: 1; }
+.lg-marca span { font-size: 15px; letter-spacing: 1px; color: #2dd4bf; }
+.lg-franja { display: flex; gap: 5px; margin: 20px 0 54px; }
+.lg-franja i { height: 5px; border-radius: 3px; }
+.lg-lado h2 { font-size: 40px; line-height: 1.15; font-weight: 650; margin: 0; }
+.lg-lado p { margin: 14px 0 0; font-size: 16px; color: #9ca3af; max-width: 340px; }
+.lg-sol { position: absolute; left: 0; right: 0; bottom: 0; width: 100%; height: auto; }
+
+/* Formulario */
+.lg-form-zona { display: flex; align-items: center; justify-content: center; padding: 40px 24px; position: relative; }
+.lg-form { width: 100%; max-width: 380px; }
+.lg-movil { display: none; }
+.lg-form h1 { font-size: 38px; font-weight: 650; color: #111827; margin: 0; }
+.lg-form .lg-sub { font-size: 15px; color: #6b7280; margin: 6px 0 30px; }
+.lg-form label { display: block; font-size: 13px; color: #374151; margin: 0 0 6px; }
+.lg-campo { position: relative; margin-bottom: 16px; }
+.lg-campo input {
+  width: 100%; background: #f3f4f6; border: none; border-radius: 11px; padding: 13px 14px;
+  font-size: 15px; color: #111827; outline: none;
+}
+.lg-campo input:focus { box-shadow: 0 0 0 1.5px #0f8b8d; }
+.lg-campo input::placeholder { color: #9ca3af; }
+.lg-ojo {
+  position: absolute; right: 8px; top: 50%; transform: translateY(-50%); border: none; background: none;
+  color: #6b7280; cursor: pointer; padding: 6px; display: grid; place-items: center;
+}
+.lg-recordar { display: flex !important; align-items: center; gap: 8px; font-size: 14px !important; cursor: pointer; margin: 4px 0 22px !important; }
+.lg-recordar input { width: 16px; height: 16px; accent-color: #111827; }
+.lg-error { color: #c0392b; font-weight: 600; font-size: 14px; margin: -8px 0 14px; }
+.lg-entrar {
+  width: 100%; border: none; border-radius: 11px; background: #111827; color: #fff; font-size: 16px; font-weight: 600;
+  padding: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+.lg-entrar:hover { background: #1f2937; }
+.lg-entrar:disabled { opacity: 0.7; cursor: default; }
+.lg-pie { position: absolute; bottom: 18px; left: 0; right: 0; text-align: center; font-size: 12px; color: #9ca3af; }
+
+/* Celular: igual que la app (sin panel oscuro, logo arriba del formulario) */
+@media (max-width: 820px) {
+  .lg { grid-template-columns: 1fr; }
+  .lg-lado { display: none; }
+  .lg-form-zona { align-items: flex-start; padding: 56px 28px 60px; min-height: 100vh; }
+  .lg-movil { display: block; margin-bottom: 40px; }
+  .lg-movil .lg-g { background: #111827; color: #fff; width: 46px; height: 46px; font-size: 24px; border-radius: 14px; }
+  .lg-movil .lg-marca b { color: #111827; font-size: 22px; }
+  .lg-movil .lg-marca span { color: #0f8b8d; font-size: 13px; }
+  .lg-movil .lg-franja { margin: 16px 0 0; }
+  .lg-form h1 { font-size: 32px; }
+}
