@@ -43,7 +43,12 @@ function mismoIngeniero(reporteNombre: string | null, perfilNombre: string) {
   const a = norm(reporteNombre);
   const b = norm(perfilNombre);
   if (!a || !b) return false;
-  return a === b || a.startsWith(b) || b.startsWith(a);
+  if (a === b || a.startsWith(b) || b.startsWith(a)) return true;
+  // "Jair Abigail Elizondo Garcia" (Getic) vs "Jair Elizondo" (perfil): todas las palabras
+  // del nombre más corto (sin acentos) deben estar en el más largo.
+  const palabras = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").split(" ");
+  const [corto, largo] = a.length <= b.length ? [palabras(a), palabras(b)] : [palabras(b), palabras(a)];
+  return corto.length >= 2 && corto.every((w) => largo.includes(w));
 }
 
 export type DiaHorario = { entrada: string | null; comida: string | null; salida: string | null; descanso: boolean };

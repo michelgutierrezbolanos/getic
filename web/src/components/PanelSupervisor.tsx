@@ -122,7 +122,7 @@ export default function PanelSupervisor({ datos }: { datos: DatosPanel }) {
         <div style={{ flex: 1 }}>
           <h1>Panel de supervisión</h1>
           <p>
-            <span style={{ textTransform: "capitalize" }}>{fecha_hoy}</span> · <span className="sv-vivo">● en vivo</span>
+            {fecha_hoy.charAt(0).toUpperCase() + fecha_hoy.slice(1)} · <span className="sv-vivo">● en vivo</span>
           </p>
         </div>
         <button className="sv-boton" onClick={() => router.refresh()}>
@@ -134,7 +134,7 @@ export default function PanelSupervisor({ datos }: { datos: DatosPanel }) {
         <div className="sv-kpi">
           <small>Folios activos</small>
           <b>{datos.resumen.activos}</b>
-          <div style={{ display: "flex", gap: 5, marginTop: 4 }}>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginTop: 4 }}>
             {(["alta", "media", "baja"] as const).map((p) =>
               conteoPrioridad(p) ? <Chip key={p} texto={`${conteoPrioridad(p)} ${p}`} fondo={PRIORIDAD[p].fondo} color={PRIORIDAD[p].color} /> : null,
             )}

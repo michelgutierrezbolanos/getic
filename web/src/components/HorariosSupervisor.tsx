@@ -37,7 +37,7 @@ export default function HorariosSupervisor({ semana, ingenieros }: { semana: str
 
       {ingenieros.length === 0 && <div className="sv-vacio">Sin ingenieros.</div>}
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))", gap: 14 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(400px, 1fr))", gap: 14, alignItems: "start" }}>
         {ingenieros.map((ing) => {
           const tiene = semana.some((f) => ing.dias[f]);
           return (
@@ -86,7 +86,7 @@ export default function HorariosSupervisor({ semana, ingenieros }: { semana: str
                               ).map(([t, v]) => (
                                 <div key={t}>
                                   <div style={{ fontSize: 11, color: esHoy ? "#9ca3af" : "#6b7280" }}>{t}</div>
-                                  <div style={{ fontWeight: 600 }}>{hora12(v)}</div>
+                                  <div style={{ fontWeight: 600, whiteSpace: "nowrap" }}>{hora12(v)}</div>
                                 </div>
                               ))}
                             </div>

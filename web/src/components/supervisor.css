@@ -152,3 +152,6 @@
   .sv-feed { position: static; }
   .sv-buscar { width: 100%; margin-left: 0; }
 }
+
+/* Leaflet: el reset de Tailwind (img max-width/height) abre rayas entre los mosaicos del mapa. */
+.leaflet-container img { max-width: none !important; max-height: none !important; }
