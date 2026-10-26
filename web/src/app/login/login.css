@@ -2,7 +2,7 @@
 .lg {
   min-height: 100vh;
   display: grid;
-  grid-template-columns: minmax(360px, 46%) 1fr;
+  grid-template-columns: minmax(300px, 30%) 1fr; /* azul 30 · blanco 70 */
   background: #fff;
   color: #1f2937;
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -11,18 +11,18 @@
 .lg * { text-shadow: none; box-sizing: border-box; }
 
 /* Panel oscuro con el atardecer */
-.lg-lado { position: relative; overflow: hidden; background: #111827; color: #fff; padding: 48px 56px; }
+.lg-lado { position: relative; overflow: hidden; background: #111827; color: #fff; padding: 40px 36px; }
 .lg-marca { display: flex; align-items: center; gap: 14px; }
 .lg-g {
-  width: 52px; height: 52px; border-radius: 15px; display: grid; place-items: center;
-  font-size: 28px; font-weight: 700; background: #fff; color: #111827;
+  width: 46px; height: 46px; border-radius: 14px; display: grid; place-items: center;
+  font-size: 25px; font-weight: 700; background: #fff; color: #111827;
 }
-.lg-marca b { display: block; font-size: 24px; line-height: 1; }
-.lg-marca span { font-size: 15px; letter-spacing: 1px; color: #2dd4bf; }
-.lg-franja { display: flex; gap: 5px; margin: 20px 0 54px; }
+.lg-marca b { display: block; font-size: 21px; line-height: 1; }
+.lg-marca span { font-size: 13.5px; letter-spacing: 1px; color: #2dd4bf; }
+.lg-franja { display: flex; gap: 5px; margin: 18px 0 44px; }
 .lg-franja i { height: 5px; border-radius: 3px; }
-.lg-lado h2 { font-size: 40px; line-height: 1.15; font-weight: 650; margin: 0; }
-.lg-lado p { margin: 14px 0 0; font-size: 16px; color: #9ca3af; max-width: 340px; }
+.lg-lado h2 { font-size: 32px; line-height: 1.15; font-weight: 650; margin: 0; }
+.lg-lado p { margin: 12px 0 0; font-size: 15px; color: #9ca3af; max-width: 280px; }
 .lg-sol { position: absolute; left: 0; right: 0; bottom: 0; width: 100%; height: auto; }
 
 /* Formulario */

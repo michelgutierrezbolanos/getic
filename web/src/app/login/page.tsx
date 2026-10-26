@@ -77,12 +77,12 @@ export default function LoginPage() {
           supervisión
         </h2>
         <p>Cada día cerramos con todo resuelto.</p>
-        <svg className="lg-sol" viewBox="0 0 260 90" aria-hidden="true">
-          <circle cx="190" cy="62" r="34" fill="#f28c28" />
-          <rect x="0" y="62" width="260" height="30" fill="#111827" />
-          <rect x="140" y="68" width="100" height="3.5" rx="1.75" fill="#f28c28" />
-          <rect x="158" y="76" width="64" height="3.5" rx="1.75" fill="#0f8b8d" />
-          <rect x="174" y="84" width="32" height="3.5" rx="1.75" fill="#9ca3af" />
+        <svg className="lg-sol" viewBox="0 0 160 80" aria-hidden="true">
+          <circle cx="58" cy="52" r="30" fill="#f28c28" />
+          <rect x="0" y="52" width="160" height="30" fill="#111827" />
+          <rect x="14" y="58" width="88" height="3.5" rx="1.75" fill="#f28c28" />
+          <rect x="30" y="66" width="56" height="3.5" rx="1.75" fill="#0f8b8d" />
+          <rect x="44" y="74" width="28" height="3.5" rx="1.75" fill="#9ca3af" />
         </svg>
       </aside>
 
