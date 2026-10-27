@@ -4,9 +4,9 @@ import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import { useEffect, useState } from "react";
 import { MapContainer, Marker, TileLayer } from "react-leaflet";
-import { estadoGetic, tiempoEnVivo, type Reporte } from "@/lib/reportes";
+import { clavePrioridad, estadoGetic, tiempoEnVivo, type Reporte } from "@/lib/reportes";
 
-const FRANJA: Record<string, string> = { alta: "#e53935", media: "#f28c28", baja: "#0f8b8d" };
+const FRANJA: Record<string, string> = { critica: "#7f1d1d", alta: "#e53935", media: "#f28c28", baja: "#0f8b8d" };
 const ESTADO: Record<string, string> = { Asignado: "Asignado", Confirmado: "Confirmado", LlegadaSitio: "En sitio", "Sin Asignar": "Sin asignar" };
 const VALLARTA: [number, number] = [20.6534, -105.2253];
 
@@ -23,7 +23,7 @@ const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&l
 /** Pin: etiqueta (CR · tienda, tiempo/vencido, pausa) y punto del color de la prioridad. */
 function icono(r: Reporte, ahora: number, sel: boolean) {
   const t = tiempo(r, ahora);
-  const color = FRANJA[(r.prioridad ?? "").toLowerCase()] ?? "#6b7280";
+  const color = FRANJA[clavePrioridad(r.prioridad)] ?? "#6b7280";
   const linea2 = [
     t ? (t.vencido ? `<span style="background:#fcebeb;color:#a32d2d;border-radius:4px;padding:0 4px">Vencido</span>` : `🕐 ${t.texto}`) : "",
     r.pausado_at ? `<span style="background:#fdf0e3;color:#9a4a06;border-radius:4px;padding:0 4px">⏸ Pausa</span>` : "",
@@ -86,7 +86,11 @@ export default function MapaLeaflet({ activos }: { activos: Reporte[] }) {
             {r.folio} · {[r.grupo_servicio, r.concepto_servicio].filter(Boolean).join(" · ")}
           </div>
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8 }}>
-            {r.prioridad && <span className="sv-chip" style={{ background: "#f3f4f6", color: FRANJA[r.prioridad.toLowerCase()] ?? "#374151" }}>{r.prioridad}</span>}
+            {r.prioridad && (
+              <span className="sv-chip" style={{ background: "#f3f4f6", color: FRANJA[clavePrioridad(r.prioridad)] ?? "#374151" }}>
+                {clavePrioridad(r.prioridad) === "critica" ? "Crítica" : r.prioridad}
+              </span>
+            )}
             <span className="sv-chip" style={{ background: "#e6f4f4", color: "#0b5f60" }}>{ESTADO[estadoGetic(r.estado)] ?? r.estado}</span>
             {r.pausado_at && <span className="sv-chip" style={{ background: "#fdf0e3", color: "#9a4a06" }}>⏸ Pausa</span>}
             {t && (

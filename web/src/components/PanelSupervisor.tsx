@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
-import { estadoGetic, formatFechaLarga, tiempoEnVivo, type Reporte } from "@/lib/reportes";
+import { clavePrioridad, estadoGetic, formatFechaLarga, tiempoEnVivo, type Reporte } from "@/lib/reportes";
 import type { DatosPanel, Nota, Solicitud } from "@/lib/supervisor";
 
 type Tab = "activos" | "cerrados" | "gasolina" | "notas";
@@ -11,11 +11,13 @@ type Gas = Solicitud & { ingeniero: string };
 type Detalle = { tipo: "folio"; r: Reporte } | { tipo: "gas"; s: Gas };
 
 const PRIORIDAD: Record<string, { franja: string; fondo: string; color: string }> = {
+  critica: { franja: "#7f1d1d", fondo: "#7f1d1d", color: "#ffffff" },
   alta: { franja: "#e53935", fondo: "#fcebeb", color: "#a32d2d" },
   media: { franja: "#f28c28", fondo: "#faeeda", color: "#854f0b" },
   baja: { franja: "#0f8b8d", fondo: "#e6f4f4", color: "#0b5f60" },
 };
-const prio = (p: string | null) => PRIORIDAD[(p ?? "").toLowerCase()];
+const prio = (p: string | null) => PRIORIDAD[clavePrioridad(p)];
+const NOMBRE_PRIORIDAD: Record<string, string> = { critica: "crítica", alta: "alta", media: "media", baja: "baja" };
 
 const ESTADO: Record<string, { texto: string; fondo: string; color: string }> = {
   Asignado: { texto: "Asignado", fondo: "#f3f4f6", color: "#374151" },
@@ -107,7 +109,7 @@ export default function PanelSupervisor({ datos }: { datos: DatosPanel }) {
 
   const q = busqueda.trim().toLowerCase();
   const coincide = (...t: (string | null | undefined)[]) => !q || t.some((x) => (x ?? "").toLowerCase().includes(q));
-  const conteoPrioridad = (p: string) => datos.activos.filter((r) => (r.prioridad ?? "").toLowerCase() === p).length;
+  const conteoPrioridad = (p: string) => datos.activos.filter((r) => clavePrioridad(r.prioridad) === p).length;
 
   const abrirFolio = (folio: string) => {
     const r = porFolio.get(folio);
@@ -135,8 +137,8 @@ export default function PanelSupervisor({ datos }: { datos: DatosPanel }) {
           <small>Folios activos</small>
           <b>{datos.resumen.activos}</b>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginTop: 4 }}>
-            {(["alta", "media", "baja"] as const).map((p) =>
-              conteoPrioridad(p) ? <Chip key={p} texto={`${conteoPrioridad(p)} ${p}`} fondo={PRIORIDAD[p].fondo} color={PRIORIDAD[p].color} /> : null,
+            {(["critica", "alta", "media", "baja"] as const).map((p) =>
+              conteoPrioridad(p) ? <Chip key={p} texto={`${conteoPrioridad(p)} ${NOMBRE_PRIORIDAD[p]}`} fondo={PRIORIDAD[p].fondo} color={PRIORIDAD[p].color} /> : null,
             )}
           </div>
         </div>
@@ -258,7 +260,7 @@ function TablaFolios({ filas, ahora, onAbrir }: { filas: Reporte[]; ahora: numbe
             <tr key={r.folio} onClick={() => onAbrir(r)}>
               <td style={{ borderLeftColor: prio(r.prioridad)?.franja }}>
                 <span className="sv-folio">{r.folio}</span>
-                <span className="sv-sub">{r.prioridad ?? ""}</span>
+                <span className="sv-sub">{clavePrioridad(r.prioridad) === "critica" ? "Crítica" : (r.prioridad ?? "")}</span>
               </td>
               <td>
                 {tienda(r)} {r.pausado_at && <Pausa />}
@@ -473,7 +475,7 @@ function DetalleFolio({ r, notas, ahora }: { r: Reporte; notas: Nota[]; ahora: n
           {r.folio}
         </span>
         {r.pausado_at && <Pausa />}
-        {p && <Chip texto={r.prioridad!} fondo={p.fondo} color={p.color} />}
+        {p && <Chip texto={clavePrioridad(r.prioridad) === "critica" ? "Crítica" : r.prioridad!} fondo={p.fondo} color={p.color} />}
       </div>
       <div style={{ fontSize: 14, color: "#6b7280", marginTop: 3 }}>
         {tienda(r)} · {r.ingeniero_asignado ?? "—"}

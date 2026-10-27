@@ -257,12 +257,18 @@ export function estaCerrado(estado: string | null) {
   return ESTADOS_CERRADOS.some((c) => e.includes(c));
 }
 
-const RANGO_PRIORIDAD: Record<string, number> = { alta: 0, media: 1, baja: 2 };
+/** Prioridad normalizada: "critica" | "alta" | "media" | "baja" (Getic manda "Critica", a veces con acento). */
+export function clavePrioridad(p: string | null): string {
+  const x = (p ?? "").toLowerCase().trim();
+  return x.startsWith("cr") ? "critica" : x;
+}
+
+const RANGO_PRIORIDAD: Record<string, number> = { critica: 0, alta: 1, media: 2, baja: 3 };
 
 export function ordenarReportes(lista: Reporte[]) {
   return [...lista].sort((a, b) => {
-    const pa = RANGO_PRIORIDAD[(a.prioridad ?? "").toLowerCase()] ?? 3;
-    const pb = RANGO_PRIORIDAD[(b.prioridad ?? "").toLowerCase()] ?? 3;
+    const pa = RANGO_PRIORIDAD[clavePrioridad(a.prioridad)] ?? 4;
+    const pb = RANGO_PRIORIDAD[clavePrioridad(b.prioridad)] ?? 4;
     if (pa !== pb) return pa - pb;
     return (a.ingeniero_asignado ?? "").localeCompare(b.ingeniero_asignado ?? "");
   });
