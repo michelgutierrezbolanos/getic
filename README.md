@@ -90,8 +90,8 @@ Datos del ingeniero que carga el bot (se identifica por `email`):
 - `POST /api/bot/horario` `{"email":"...","dias":[{"fecha":"2026-10-19","entrada":"09:00","comida":"13:00","salida":"18:00"},{"fecha":"2026-10-25","descanso":true}]}`
 - `POST /api/bot/vehiculo` `{"email":"...","placa":"FKS316D","numero_economico":"237"}`
 
-## Documentación completa de la API
+## Otros endpoints
 
-Entra al portal → **API** (`/api-docs`): todos los endpoints con body, respuesta y ejemplo curl. `GET /api/bot` devuelve la misma lista en JSON.
+`GET /api/bot` comprueba la clave (el bot lo llama al arrancar).
 
 Acciones del folio para el bot: `POST /api/bot/reportes/{folio}/tomar`, `/confirmar`, `/llegada` y `/cerrar` (este último con `solucion`, `vobo` y `atiende`). Solicitudes: `POST /api/bot/solicitudes`.

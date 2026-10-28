@@ -206,39 +206,6 @@ body {
   font-size: 14px;
 }
 
-/* ---- Documentación de la API ---- */
-.endpoint {
-  background: #fff;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 1em;
-  margin-bottom: 1em;
-  text-shadow: none;
-}
-.metodo {
-  color: #fff;
-  font-weight: 700;
-  font-size: 12px;
-  padding: 0.2em 0.6em;
-  border-radius: 4px;
-}
-.codigo {
-  background: #1e1e1e;
-  color: #e6e6e6;
-  font-size: 12.5px;
-  padding: 0.8em 1em;
-  border-radius: 5px;
-  overflow-x: auto;
-  margin-top: 0.3em;
-  text-shadow: none;
-}
-.codigo-linea {
-  background: #ececec;
-  padding: 0.05em 0.35em;
-  border-radius: 3px;
-  font-size: 0.9em;
-}
-
 /* ---- Lista de folios (clon de pag.reportes.des.php) ---- */
 .btn-icono {
   display: inline-flex;
@@ -751,59 +718,6 @@ body {
   .horario-dia {
     font-size: 9px;
   }
-}
-.btn-api {
-  position: absolute;
-  top: 50%;
-  right: 48px;
-  transform: translateY(-50%);
-  padding: 0.2em 0.7em;
-  background: #222;
-  color: #fff;
-  font-size: 12px;
-  font-weight: 700;
-  border-radius: 12px;
-  text-shadow: none;
-}
-.btn-api:hover {
-  background: #444;
-}
-.conexion {
-  margin-top: 1.2em;
-  background: #fff;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 1em;
-  text-shadow: none;
-}
-.tabla-conexion {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 14px;
-}
-.tabla-conexion td {
-  padding: 0.45em 0.5em;
-  border-bottom: 1px solid #eee;
-  vertical-align: middle;
-}
-.tabla-conexion td:first-child {
-  font-weight: 700;
-  white-space: nowrap;
-  width: 11em;
-}
-.tabla-conexion td:last-child {
-  width: 5em;
-  text-align: right;
-}
-.guia-bot {
-  width: 100%;
-  margin-top: 0.5em;
-  font-family: ui-monospace, Menlo, monospace;
-  font-size: 12px;
-  border: 1px solid var(--border);
-  border-radius: 5px;
-  padding: 0.6em;
-  background: #fafafa;
 }
 .etiqueta-pausa {
   display: inline-block;
